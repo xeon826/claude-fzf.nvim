@@ -135,21 +135,77 @@ function M.send_grep_results(selections, opts)
     -- Clean Unicode icons from grep results first
     local cleaned_line = line
     
-    -- Remove specific Unicode spaces and icons based on byte sequences from logs
-    -- Remove Unicode spaces (U+2000-U+200F range)
-    cleaned_line = cleaned_line:gsub("\226\128\130", "")  -- U+2002 EN SPACE
-    cleaned_line = cleaned_line:gsub("\226\128\131", "")  -- U+2003 EM SPACE  
-    cleaned_line = cleaned_line:gsub("\226\128\137", "")  -- U+2009 THIN SPACE
-    cleaned_line = cleaned_line:gsub("\226\128\138", "")  -- U+200A HAIR SPACE
-    cleaned_line = cleaned_line:gsub("\226\128\139", "")  -- U+200B ZERO WIDTH SPACE
+    -- Safe Unicode cleanup function that preserves Chinese characters
+    -- Based on UTF-8 encoding research and best practices
+    local function remove_icons_safely(str)
+      -- Remove characters using proper UTF-8 iteration to avoid corrupting Chinese text
+      local result = {}
+      local i = 1
+      
+      while i <= #str do
+        local byte1 = string.byte(str, i)
+        local char_len = 1
+        local codepoint = nil
+        
+        -- Determine UTF-8 character length and decode codepoint
+        if byte1 < 128 then
+          -- ASCII character (1 byte)
+          codepoint = byte1
+          char_len = 1
+        elseif byte1 >= 194 and byte1 <= 223 then
+          -- 2-byte UTF-8 character
+          if i + 1 <= #str then
+            local byte2 = string.byte(str, i + 1)
+            codepoint = ((byte1 - 192) * 64) + (byte2 - 128)
+            char_len = 2
+          end
+        elseif byte1 >= 224 and byte1 <= 239 then
+          -- 3-byte UTF-8 character
+          if i + 2 <= #str then
+            local byte2 = string.byte(str, i + 1)
+            local byte3 = string.byte(str, i + 2)
+            codepoint = ((byte1 - 224) * 4096) + ((byte2 - 128) * 64) + (byte3 - 128)
+            char_len = 3
+          end
+        elseif byte1 >= 240 and byte1 <= 244 then
+          -- 4-byte UTF-8 character
+          if i + 3 <= #str then
+            local byte2 = string.byte(str, i + 1)
+            local byte3 = string.byte(str, i + 2)
+            local byte4 = string.byte(str, i + 3)
+            codepoint = ((byte1 - 240) * 262144) + ((byte2 - 128) * 4096) + ((byte3 - 128) * 64) + (byte4 - 128)
+            char_len = 4
+          end
+        end
+        
+        -- Filter out unwanted characters while preserving Chinese and other legitimate text
+        local should_keep = true
+        if codepoint then
+          -- Remove Private Use Area characters (Nerd Font icons)
+          if (codepoint >= 0xE000 and codepoint <= 0xF8FF) or
+             (codepoint >= 0xF0000 and codepoint <= 0xFFFFD) or
+             (codepoint >= 0x100000 and codepoint <= 0x10FFFD) then
+            should_keep = false
+          -- Remove specific Unicode space characters  
+          elseif codepoint >= 0x2000 and codepoint <= 0x200F then
+            should_keep = false
+          -- Remove other control characters except common whitespace
+          elseif codepoint < 32 and codepoint ~= 9 and codepoint ~= 10 and codepoint ~= 13 then
+            should_keep = false
+          end
+        end
+        
+        if should_keep and char_len > 0 then
+          table.insert(result, string.sub(str, i, i + char_len - 1))
+        end
+        
+        i = i + char_len
+      end
+      
+      return table.concat(result)
+    end
     
-    -- Remove specific icon from logs: [238, 152, 134]
-    cleaned_line = cleaned_line:gsub("\238\152\134", "")
-    
-    -- Remove other common Nerd Font icons
-    cleaned_line = cleaned_line:gsub("\238\152\139", "")  -- [238, 152, 139]
-    cleaned_line = cleaned_line:gsub("\238\152\149", "")  -- [238, 152, 149]
-    cleaned_line = cleaned_line:gsub("\238\156\130", "")  -- [238, 156, 130]
+    cleaned_line = remove_icons_safely(cleaned_line)
     
     cleaned_line = vim.trim(cleaned_line)
     
@@ -372,75 +428,73 @@ function M.parse_selection(selection, opts)
   end
   logger.debug("[PARSE_SELECTION] Raw bytes: [%s]", table.concat(byte_repr, ", "))
   
-  -- FIX: Remove file icons and Unicode spaces from fzf-lua output while preserving Chinese characters
-  local file_path = selection
-  
-  -- Remove specific Unicode spaces that fzf adds (exact patterns only)
-  file_path = file_path:gsub("\226\128\130", "")  -- U+2002 EN SPACE
-  file_path = file_path:gsub("\226\128\131", "")  -- U+2003 EM SPACE  
-  file_path = file_path:gsub("\226\128\137", "")  -- U+2009 THIN SPACE
-  file_path = file_path:gsub("\226\128\138", "")  -- U+200A HAIR SPACE
-  file_path = file_path:gsub("\226\128\139", "")  -- U+200B ZERO WIDTH SPACE
-  
-  -- Remove specific icon characters we've seen in logs (exact patterns only)
-  file_path = file_path:gsub("\239\146\138", "")  -- Specific file icon from logs
-  file_path = file_path:gsub("\238\156\130", "")  -- Another icon pattern
-  file_path = file_path:gsub("\238\152\139", "")  -- Icon from logs [238, 152, 139]
-  file_path = file_path:gsub("\238\152\149", "")  -- Icon from logs [238, 152, 149] 
-  file_path = file_path:gsub("\238\152\134", "")  -- Icon from logs [238, 152, 134]
-  
-  -- Remove common file icons by specific known sequences (not dangerous ranges!)
-  -- These are Nerd Font file type icons commonly used by nvim-web-devicons, starship, zsh, etc.
-  -- Unicode range U+E000-U+F8FF (Private Use Area) encoded as UTF-8
-  local common_icons = {
-    -- File type icons (\238\156\xxx range - U+E700-U+E7FF)
-    "\238\156\128", "\238\156\129", "\238\156\130", "\238\156\131", "\238\156\132", "\238\156\133", "\238\156\134", "\238\156\135",
-    "\238\156\136", "\238\156\137", "\238\156\138", "\238\156\139", "\238\156\140", "\238\156\141", "\238\156\142", "\238\156\143",
-    "\238\156\144", "\238\156\145", "\238\156\146", "\238\156\147", "\238\156\148", "\238\156\149", "\238\156\150", "\238\156\151",
-    "\238\156\152", "\238\156\153", "\238\156\154", "\238\156\155", "\238\156\156", "\238\156\157", "\238\156\158", "\238\156\159",
-    "\238\156\160", "\238\156\161", "\238\156\162", "\238\156\163", "\238\156\164", "\238\156\165", "\238\156\166", "\238\156\167",
-    "\238\156\168", "\238\156\169", "\238\156\170", "\238\156\171", "\238\156\172", "\238\156\173", "\238\156\174", "\238\156\175",
-    "\238\156\176", "\238\156\177", "\238\156\178", "\238\156\179", "\238\156\180", "\238\156\181", "\238\156\182", "\238\156\183",
-    "\238\156\184", "\238\156\185", "\238\156\186", "\238\156\187", "\238\156\188", "\238\156\189", "\238\156\190", "\238\156\191",
+  -- Use the same safe Unicode cleanup function as in send_grep_results
+  local function remove_icons_safely(str)
+    local result = {}
+    local i = 1
     
-    -- More file icons (\238\152\xxx range - U+E600-U+E6FF)  
-    "\238\152\128", "\238\152\129", "\238\152\130", "\238\152\131", "\238\152\132", "\238\152\133", "\238\152\134", "\238\152\135",
-    "\238\152\136", "\238\152\137", "\238\152\138", "\238\152\139", "\238\152\140", "\238\152\141", "\238\152\142", "\238\152\143",
-    "\238\152\144", "\238\152\145", "\238\152\146", "\238\152\147", "\238\152\148", "\238\152\149", "\238\152\150", "\238\152\151",
-    "\238\152\152", "\238\152\153", "\238\152\154", "\238\152\155", "\238\152\156", "\238\152\157", "\238\152\158", "\238\152\159",
-    "\238\152\160", "\238\152\161", "\238\152\162", "\238\152\163", "\238\152\164", "\238\152\165", "\238\152\166", "\238\152\167",
-    "\238\152\168", "\238\152\169", "\238\152\170", "\238\152\171", "\238\152\172", "\238\152\173", "\238\152\174", "\238\152\175",
-    "\238\152\176", "\238\152\177", "\238\152\178", "\238\152\179", "\238\152\180", "\238\152\181", "\238\152\182", "\238\152\183",
-    "\238\152\184", "\238\152\185", "\238\152\186", "\238\152\187", "\238\152\188", "\238\152\189", "\238\152\190", "\238\152\191",
+    while i <= #str do
+      local byte1 = string.byte(str, i)
+      local char_len = 1
+      local codepoint = nil
+      
+      -- Determine UTF-8 character length and decode codepoint
+      if byte1 < 128 then
+        codepoint = byte1
+        char_len = 1
+      elseif byte1 >= 194 and byte1 <= 223 then
+        if i + 1 <= #str then
+          local byte2 = string.byte(str, i + 1)
+          codepoint = ((byte1 - 192) * 64) + (byte2 - 128)
+          char_len = 2
+        end
+      elseif byte1 >= 224 and byte1 <= 239 then
+        if i + 2 <= #str then
+          local byte2 = string.byte(str, i + 1)
+          local byte3 = string.byte(str, i + 2)
+          codepoint = ((byte1 - 224) * 4096) + ((byte2 - 128) * 64) + (byte3 - 128)
+          char_len = 3
+        end
+      elseif byte1 >= 240 and byte1 <= 244 then
+        if i + 3 <= #str then
+          local byte2 = string.byte(str, i + 1)
+          local byte3 = string.byte(str, i + 2)
+          local byte4 = string.byte(str, i + 3)
+          codepoint = ((byte1 - 240) * 262144) + ((byte2 - 128) * 4096) + ((byte3 - 128) * 64) + (byte4 - 128)
+          char_len = 4
+        end
+      end
+      
+      -- Filter out unwanted characters while preserving Chinese and other legitimate text
+      local should_keep = true
+      if codepoint then
+        -- Remove Private Use Area characters (Nerd Font icons)
+        if (codepoint >= 0xE000 and codepoint <= 0xF8FF) or
+           (codepoint >= 0xF0000 and codepoint <= 0xFFFFD) or
+           (codepoint >= 0x100000 and codepoint <= 0x10FFFD) then
+          should_keep = false
+        -- Remove specific Unicode space characters  
+        elseif codepoint >= 0x2000 and codepoint <= 0x200F then
+          should_keep = false
+        -- Remove other control characters except common whitespace
+        elseif codepoint < 32 and codepoint ~= 9 and codepoint ~= 10 and codepoint ~= 13 then
+          should_keep = false
+        end
+      end
+      
+      if should_keep and char_len > 0 then
+        table.insert(result, string.sub(str, i, i + char_len - 1))
+      end
+      
+      i = i + char_len
+    end
     
-    -- DevIcons range (\238\153\xxx range - U+E800-U+E8FF)
-    "\238\153\128", "\238\153\129", "\238\153\130", "\238\153\131", "\238\153\132", "\238\153\133", "\238\153\134", "\238\153\135",
-    "\238\153\136", "\238\153\137", "\238\153\138", "\238\153\139", "\238\153\140", "\238\153\141", "\238\153\142", "\238\153\143",
-    "\238\153\144", "\238\153\145", "\238\153\146", "\238\153\147", "\238\153\148", "\238\153\149", "\238\153\150", "\238\153\151",
-    "\238\153\152", "\238\153\153", "\238\153\154", "\238\153\155", "\238\153\156", "\238\153\157", "\238\153\158", "\238\153\159",
-    
-    -- Font Awesome icons (\239\xxx\xxx range - U+F000-U+F8FF)
-    "\239\128\128", "\239\128\129", "\239\128\130", "\239\128\131", "\239\128\132", "\239\128\133", "\239\128\134", "\239\128\135",
-    "\239\129\128", "\239\129\129", "\239\129\130", "\239\129\131", "\239\129\132", "\239\129\133", "\239\129\134", "\239\129\135",
-    "\239\130\128", "\239\130\129", "\239\130\130", "\239\130\131", "\239\130\132", "\239\130\133", "\239\130\134", "\239\130\135",
-    "\239\131\128", "\239\131\129", "\239\131\130", "\239\131\131", "\239\131\132", "\239\131\133", "\239\131\134", "\239\131\135",
-    
-    -- Material Design Icons (\238\180\xxx range)
-    "\238\180\128", "\238\180\129", "\238\180\130", "\238\180\131", "\238\180\132", "\238\180\133", "\238\180\134", "\238\180\135",
-    "\238\180\136", "\238\180\137", "\238\180\138", "\238\180\139", "\238\180\140", "\238\180\141", "\238\180\142", "\238\180\143",
-    
-    -- Octicons (\238\160\xxx range)
-    "\238\160\128", "\238\160\129", "\238\160\130", "\238\160\131", "\238\160\132", "\238\160\133", "\238\160\134", "\238\160\135",
-    "\238\160\136", "\238\160\137", "\238\160\138", "\238\160\139", "\238\160\140", "\238\160\141", "\238\160\142", "\238\160\143",
-  }
-  
-  for _, icon in ipairs(common_icons) do
-    file_path = file_path:gsub(icon, "")
+    return table.concat(result)
   end
   
-  -- Standard whitespace trimming
+  local file_path = remove_icons_safely(selection)
+  
   file_path = vim.trim(file_path)
-
   if opts.is_buffer then
     -- For buffers, remove flags like '#' (alt) or '%' (current) from the beginning.
     file_path = file_path:gsub("^[#%%]%s*", "")
