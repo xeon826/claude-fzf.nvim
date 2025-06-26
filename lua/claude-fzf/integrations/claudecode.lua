@@ -355,7 +355,8 @@ function M.extract_context(file_path, line)
   return nil
 end
 
-function M.parse_selection(selection)
+function M.parse_selection(selection, opts)
+  opts = opts or {}
   logger.debug("[PARSE_SELECTION] Raw input: '%s' (type: %s, length: %d)", 
     selection or "nil", type(selection), selection and #selection or 0)
   
@@ -439,42 +440,75 @@ function M.parse_selection(selection)
   
   -- Standard whitespace trimming
   file_path = vim.trim(file_path)
-  
-  logger.debug("[PARSE_SELECTION] After icon/Unicode cleanup: '%s' (length: %d)", file_path, #file_path)
-  
-  if file_path == "" then
-    logger.debug("File path is empty after trimming")
-    return nil
+
+  if opts.is_buffer then
+    -- For buffers, remove flags like '#' (alt) or '%' (current) from the beginning.
+    file_path = file_path:gsub("^[#%%]%s*", "")
+    file_path = vim.trim(file_path)
   end
   
+  logger.debug("[PARSE_SELECTION] After icon/Unicode cleanup: '%s' (length: %d)", file_path, #file_path)
+
+  local line_info = {
+    path = file_path,
+    start_line = nil,
+    end_line = nil
+  }
+
+  -- Separate the path from line/col numbers. Handles `path:line`.
+  -- This regex is intentionally greedy on the path part to handle Windows paths with colons.
+  logger.debug("[PARSE_SELECTION] Attempting to separate line number from: '%s'", line_info.path)
+  local matched_path, matched_line = line_info.path:match("^(.*):(%d+)$")
+  logger.debug("[PARSE_SELECTION] Regex match result: matched_path='%s', matched_line='%s'", matched_path or "nil", matched_line or "nil")
+  
+  if matched_path and #matched_path > 0 then
+    -- This is a simple heuristic to avoid misinterpreting a Windows drive letter (e.g., "C:") as a path and a line number.
+    if not (matched_path:match("^[a-zA-Z]$") and vim.fn.has('win32')) then
+      logger.debug("[PARSE_SELECTION] Detected path and line number: '%s' and '%s'", matched_path, matched_line)
+      line_info.path = matched_path
+      line_info.start_line = tonumber(matched_line)
+      line_info.end_line = tonumber(matched_line)
+      logger.debug("[PARSE_SELECTION] After line separation: path='%s', line=%s", line_info.path, line_info.start_line)
+    else
+      logger.debug("[PARSE_SELECTION] Path '%s' looks like a Windows drive letter, not splitting.", matched_path)
+    end
+  else
+    logger.debug("[PARSE_SELECTION] No line number pattern found in path: '%s'", line_info.path)
+  end
+
+  if line_info.path == "" then
+    logger.debug("File path is empty after trimming and parsing")
+    return nil
+  end
+
   -- 尝试多种路径解析策略
   local paths_to_try = {}
-  
-  -- 1. 直接使用原路径
-  table.insert(paths_to_try, file_path)
+
+  -- 1. 直接使用解析后的路径
+  table.insert(paths_to_try, line_info.path)
   
   -- 2. 展开路径（处理 ~ 等）
-  local expanded_path = vim.fn.expand(file_path)
-  if expanded_path ~= file_path then
+  local expanded_path = vim.fn.expand(line_info.path)
+  if expanded_path ~= line_info.path then
     table.insert(paths_to_try, expanded_path)
   end
   
   -- 3. 如果是相对路径，尝试基于当前工作目录
-  if not vim.startswith(file_path, '/') then
+  if not vim.startswith(line_info.path, '/') then
     local cwd = vim.loop.cwd()
-    table.insert(paths_to_try, cwd .. '/' .. file_path)
+    table.insert(paths_to_try, cwd .. '/' .. line_info.path)
   end
   
   -- 4. 如果是相对路径，尝试基于 HOME 目录
-  if not vim.startswith(file_path, '/') then
+  if not vim.startswith(line_info.path, '/') then
     local home = vim.env.HOME or os.getenv('HOME')
     if home then
-      table.insert(paths_to_try, home .. '/' .. file_path)
+      table.insert(paths_to_try, home .. '/' .. line_info.path)
     end
   end
   
   -- 5. 尝试使用 vim.fn.findfile
-  local found_file = vim.fn.findfile(file_path, '.;')
+  local found_file = vim.fn.findfile(line_info.path, '.;')
   if found_file ~= "" then
     table.insert(paths_to_try, vim.fn.fnamemodify(found_file, ':p'))
   end
@@ -495,8 +529,8 @@ function M.parse_selection(selection)
       logger.debug("[PARSE_SELECTION] ✓ Successfully found file: '%s' (type: %s)", path, stat.type)
       return {
         path = path,
-        start_line = nil,
-        end_line = nil
+        start_line = line_info.start_line,
+        end_line = line_info.end_line
       }
     else
       logger.debug("[PARSE_SELECTION] ✗ File not found: '%s'", path)
@@ -504,66 +538,47 @@ function M.parse_selection(selection)
   end
   
   logger.debug("[PARSE_SELECTION] ✗ File not found after trying %d paths for input '%s':", #paths_to_try, selection)
-  logger.debug("[PARSE_SELECTION] Trimmed path: '%s'", file_path)
+  logger.debug("[PARSE_SELECTION] Trimmed path: '%s'", line_info.path)
   logger.debug("[PARSE_SELECTION] Paths tried: %s", vim.inspect(paths_to_try))
   
   -- Validate that we have a clean file path
-  if file_path == "" then
+  if line_info.path == "" then
     logger.debug("[PARSE_SELECTION] File path empty after cleanup")
     return nil
   end
   
   -- Additional debugging: Show the cleaning process
-  logger.debug("[PARSE_SELECTION] Cleaning result: '%s' -> '%s'", selection, file_path)
+  logger.debug("[PARSE_SELECTION] Cleaning result: '%s' -> '%s'", selection, line_info.path)
   
-  M.handle_error(ErrorTypes.FILE_NOT_FOUND, { file_path = file_path })
+  M.handle_error(ErrorTypes.FILE_NOT_FOUND, { file_path = line_info.path })
   return nil
 end
 
 function M.parse_buffer_selection(selection)
-  logger.debug("[PARSE_BUFFER] Raw input: '%s' (type: %s, length: %d)", 
+  logger.debug("[PARSE_BUFFER] Raw input: '%s' (type: %s, length: %d)",
     selection or "nil", type(selection), selection and #selection or 0)
-    
+
   if not selection or selection == "" then
     logger.debug("[PARSE_BUFFER] Empty or nil buffer selection")
     return nil
   end
-  
-  -- Debug: Show raw bytes for debugging Unicode issues
-  local byte_repr = {}
-  for i = 1, math.min(#selection, 50) do
-    table.insert(byte_repr, string.byte(selection, i))
-  end
-  logger.debug("[PARSE_BUFFER] Raw bytes: [%s]", table.concat(byte_repr, ", "))
-  
-  -- Use the same comprehensive icon cleanup as parse_selection
-  local cleaned = M.parse_selection(selection) or selection
-  
-  -- Standard whitespace trimming
-  cleaned = vim.trim(cleaned)
-  
-  logger.debug("[PARSE_BUFFER] After cleaning: '%s'", cleaned)
-  
-  -- Extract file path from buffer format: "[number] filepath:line" or "[number] filepath"
-  -- Pattern matches: [digits] followed by optional whitespace, then capture the file path
-  local file_path = cleaned:match("^%[%d+%]%s*(.+)$")
-  
-  if file_path then
-    -- Remove line number if present (":number" at the end)
-    file_path = file_path:gsub(":%d+$", "")
-    file_path = vim.trim(file_path)
-    logger.debug("[PARSE_BUFFER] Extracted file path: '%s'", file_path)
-    
-    -- Convert to absolute path
-    if not vim.startswith(file_path, '/') then
-      local cwd = vim.loop.cwd()
-      file_path = cwd .. '/' .. file_path
-      logger.debug("[PARSE_BUFFER] Converted to absolute path: '%s'", file_path)
-    end
-    
-    return file_path
+
+  -- The fzf-lua buffer format is typically `[bufnr] [flags] [icon] path:linenr`
+  -- We want to strip the `[bufnr]` part and delegate the rest to the main file parser.
+  -- This regex captures the part after `[<number>]` and optional whitespace.
+  local file_part = selection:match("^%[%d+%]%s*(.*)$") or selection
+
+  logger.debug("[PARSE_BUFFER] Stripped buffer number, passing to M.parse_selection: '%s'", file_part)
+
+  -- Delegate to the more robust file parser
+  local file_info = M.parse_selection(file_part, { is_buffer = true })
+
+  if file_info and file_info.path then
+    logger.debug("[PARSE_BUFFER] Successfully parsed with M.parse_selection, result: '%s'", file_info.path)
+    -- The buffer selection doesn't imply a line range, so we just return the path.
+    return file_info.path
   else
-    logger.warn("[PARSE_BUFFER] Failed to extract file path from: '%s'", cleaned)
+    logger.warn("[PARSE_BUFFER] M.parse_selection failed to find a valid file for: '%s'", file_part)
     return nil
   end
 end
