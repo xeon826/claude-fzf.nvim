@@ -130,30 +130,53 @@ function M.send_grep_results(selections, opts)
   local file_selections = {}
   
   for _, line in ipairs(selections) do
+    logger.debug("[GREP_PARSE] Processing line: '%s'", line)
+    
     -- Clean Unicode icons from grep results first
-    local cleaned_line = M.parse_selection(line) or line
+    local cleaned_line = line
     
-    -- Handle both formats: "file:line:content" and "file:line:column:content"
-    local file, line_num, col_or_content, content = cleaned_line:match("^([^:]+):(%d+):(%d*):?(.*)$")
+    -- Remove specific Unicode spaces and icons (same as parse_selection but inline)
+    cleaned_line = cleaned_line:gsub("[\226\128][\130-\139]", "")  -- Unicode spaces
+    cleaned_line = cleaned_line:gsub("[\238][\152\156\153\160\180][\128-\191]", "")  -- Common Nerd Font icons
+    cleaned_line = cleaned_line:gsub("[\239][\128-\131][\128-\191]", "")  -- Font Awesome icons
+    cleaned_line = vim.trim(cleaned_line)
     
-    if file and line_num then
-      -- If col_or_content is a number, then content is the 4th capture, otherwise it's the 3rd
-      local actual_content
-      if content and content ~= "" then
-        -- Format: file:line:column:content
-        actual_content = content
-      else
-        -- Format: file:line:content (col_or_content is actually content)
-        actual_content = col_or_content or ""
+    logger.debug("[GREP_PARSE] After cleanup: '%s'", cleaned_line)
+    
+    -- Parse ripgrep format: "file:line:column:content" or "file:line:content"
+    -- First extract file path by finding the pattern before first number
+    local file_path, rest = cleaned_line:match("^([^:]+):(%d+.*)$")
+    
+    if file_path and rest then
+      -- Now parse the rest which should be "line:column:content" or "line:content"
+      local line_num, col_num, content = rest:match("^(%d+):(%d+):(.*)$")
+      
+      if not line_num then
+        -- Try format without column: "line:content"
+        line_num, content = rest:match("^(%d+):(.*)$")
+        col_num = nil
       end
       
-      table.insert(file_selections, {
-        file = file,
-        line = tonumber(line_num),
-        content = actual_content
-      })
+      if line_num then
+        logger.debug("[GREP_PARSE] Parsed - file: '%s', line: %s, column: %s", 
+          file_path, line_num, col_num or "none")
+        
+        -- Validate file exists before adding to selections
+        local file_exists = vim.loop.fs_stat(file_path) ~= nil
+        if file_exists then
+          table.insert(file_selections, {
+            file = file_path,
+            line = tonumber(line_num),
+            content = content or ""
+          })
+        else
+          logger.warn("[GREP_PARSE] File does not exist: '%s'", file_path)
+        end
+      else
+        logger.warn("[GREP_PARSE] Failed to parse line/content from: '%s'", rest)
+      end
     else
-      logger.warn("[GREP_PARSE] Failed to parse grep line: '%s'", line)
+      logger.warn("[GREP_PARSE] Failed to parse grep line: '%s'", cleaned_line)
     end
   end
   
