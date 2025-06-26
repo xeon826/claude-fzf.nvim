@@ -226,6 +226,15 @@ function M.send_buffer_selections(selections, opts)
     if file_path then
       logger.debug("[BUFFER_SELECTIONS] Parsed file path: '%s'", file_path)
       
+      -- Check if file exists
+      local file_exists = vim.loop.fs_stat(file_path) ~= nil
+      if not file_exists then
+        logger.warn("[BUFFER_SELECTIONS] File does not exist: '%s'", file_path)
+        M.handle_error(ErrorTypes.FILE_NOT_FOUND, { file_path = file_path })
+      else
+        logger.debug("[BUFFER_SELECTIONS] File exists: '%s'", file_path)
+      end
+      
       if config.should_show_progress() then
         M.show_progress(i, total, "发送缓冲区到 Claude")
       end
@@ -482,33 +491,8 @@ function M.parse_buffer_selection(selection)
   end
   logger.debug("[PARSE_BUFFER] Raw bytes: [%s]", table.concat(byte_repr, ", "))
   
-  -- Remove file icons and Unicode spaces while preserving Chinese characters
-  local cleaned = selection
-  
-  -- Remove specific Unicode spaces (exact patterns only)
-  cleaned = cleaned:gsub("\226\128\130", "")  -- U+2002 EN SPACE
-  cleaned = cleaned:gsub("\226\128\131", "")  -- U+2003 EM SPACE  
-  cleaned = cleaned:gsub("\226\128\137", "")  -- U+2009 THIN SPACE
-  cleaned = cleaned:gsub("\226\128\138", "")  -- U+200A HAIR SPACE
-  cleaned = cleaned:gsub("\226\128\139", "")  -- U+200B ZERO WIDTH SPACE
-  
-  -- Remove specific icon characters (exact patterns only)
-  cleaned = cleaned:gsub("\239\146\138", "")  -- Specific icon from logs
-  cleaned = cleaned:gsub("\238\156\130", "")  -- Another specific icon
-  
-  -- Remove common file icons by specific known sequences (not ranges!)
-  local common_icons = {
-    "\238\156\128",  -- Specific icons
-    "\238\156\129", 
-    "\238\156\131", 
-    "\238\156\132", 
-    "\238\156\133", 
-    "\238\156\134",
-  }
-  
-  for _, icon in ipairs(common_icons) do
-    cleaned = cleaned:gsub(icon, "")
-  end
+  -- Use the same comprehensive icon cleanup as parse_selection
+  local cleaned = M.parse_selection(selection) or selection
   
   -- Standard whitespace trimming
   cleaned = vim.trim(cleaned)
