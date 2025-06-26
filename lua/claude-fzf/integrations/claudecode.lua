@@ -313,6 +313,7 @@ function M.parse_selection(selection)
   -- Remove specific icon characters we've seen in logs (exact patterns only)
   file_path = file_path:gsub("\239\146\138", "")  -- Specific file icon from logs
   file_path = file_path:gsub("\238\156\130", "")  -- Another icon pattern
+  file_path = file_path:gsub("\238\152\139", "")  -- Icon from current logs [238, 152, 139]
   
   -- Remove common file icons by specific known sequences (not dangerous ranges!)
   local common_icons = {
@@ -322,6 +323,9 @@ function M.parse_selection(selection)
     "\238\156\132", 
     "\238\156\133", 
     "\238\156\134",
+    "\238\152\140",  -- Additional icon patterns
+    "\238\152\141",
+    "\238\152\142",
   }
   
   for _, icon in ipairs(common_icons) do

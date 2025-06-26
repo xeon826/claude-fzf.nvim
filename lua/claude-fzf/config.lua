@@ -29,8 +29,8 @@ M.defaults = {
       wrap = 'wrap',
     },
     winopts = {
-      height = 0.8,
-      width = 0.8,
+      height = 0.99,
+      width = 0.99,
       backdrop = 60,
     }
   },
