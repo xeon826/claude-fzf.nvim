@@ -1,0 +1,270 @@
+*claude-fzf.nvim*           Enhanced FZF integration for Claude AI interaction
+
+==============================================================================
+CONTENTS                                                    *claude-fzf-contents*
+
+1. Introduction ........................... |claude-fzf-introduction|
+2. Installation ........................... |claude-fzf-installation|
+3. Configuration .......................... |claude-fzf-configuration|
+4. Usage .................................. |claude-fzf-usage|
+5. Commands ............................... |claude-fzf-commands|
+6. Key Mappings ........................... |claude-fzf-keymaps|
+7. API .................................... |claude-fzf-api|
+8. Troubleshooting ........................ |claude-fzf-troubleshooting|
+
+==============================================================================
+1. INTRODUCTION                                         *claude-fzf-introduction*
+
+claude-fzf.nvim is a powerful Neovim plugin that bridges the gap between
+file selection and AI-powered development with Claude. It provides an
+intuitive interface using fzf-lua for selecting files, searching content,
+and seamlessly sending the selected context to Claude for analysis and
+assistance.
+
+Key Features:
+- File selection with fuzzy finding
+- Content search with live grep
+- Buffer and Git file integration
+- Batch processing with progress indicators
+- Smart context extraction
+- Automatic terminal integration
+
+Requirements:
+- Neovim 0.9+
+- fzf-lua plugin
+- claudecode.nvim plugin
+
+Optional Dependencies:
+- nvim-treesitter (for smart context extraction)
+
+==============================================================================
+2. INSTALLATION                                         *claude-fzf-installation*
+
+Using lazy.nvim: >
+    {
+        'your-username/claude-fzf.nvim',
+        dependencies = {
+            'ibhagwan/fzf-lua',
+            'coder/claudecode.nvim'
+        },
+        config = function()
+            require('claude-fzf').setup()
+        end
+    }
+<
+
+Using packer.nvim: >
+    use {
+        'your-username/claude-fzf.nvim',
+        requires = {
+            'ibhagwan/fzf-lua',
+            'coder/claudecode.nvim'
+        },
+        config = function()
+            require('claude-fzf').setup()
+        end
+    }
+<
+
+==============================================================================
+3. CONFIGURATION                                       *claude-fzf-configuration*
+
+Default configuration: >
+    require('claude-fzf').setup({
+        batch_size = 5,
+        show_progress = true,
+        auto_open_terminal = true,
+        auto_context = true,
+        
+        -- Logging configuration
+        logging = {
+            level = "INFO",              -- TRACE, DEBUG, INFO, WARN, ERROR
+            file_logging = true,         -- Enable file logging
+            console_logging = true,      -- Enable console logging
+            show_caller = true,          -- Show caller location
+            timestamp = true,            -- Show timestamp
+        },
+        
+        -- Key mappings
+        keymaps = {
+            files = "<leader>cf",
+            grep = "<leader>cg", 
+            buffers = "<leader>cb",
+            git_files = "<leader>cgf",
+        },
+        
+        -- Fuzzy finder options
+        fzf_opts = {
+            preview = {
+                border = 'sharp',
+                title = 'Preview',
+                wrap = 'wrap',
+            },
+            winopts = {
+                height = 0.8,
+                width = 0.8,
+                backdrop = 60,
+            }
+        },
+        
+        -- Claude integration options
+        claude_opts = {
+            auto_open_terminal = true,
+            context_lines = 5,
+            source_tag = "claude-fzf",
+        },
+    })
+<
+
+Configuration Options:
+
+*claude-fzf-batch_size*         Number of files to process in each batch
+*claude-fzf-show_progress*      Show progress notifications during processing
+*claude-fzf-auto_open_terminal* Automatically open Claude terminal
+*claude-fzf-auto_context*       Enable automatic context extraction
+*claude-fzf-logging*            Logging system configuration
+*claude-fzf-keymaps*            Key mapping definitions
+*claude-fzf-fzf_opts*           FZF display options
+*claude-fzf-claude_opts*        Claude integration options
+
+==============================================================================
+4. USAGE                                                       *claude-fzf-usage*
+
+Basic workflow:
+1. Use key mappings or commands to open file/content pickers
+2. Select files or search results using FZF interface
+3. Use Tab to multi-select items
+4. Press Enter to send selected items to Claude
+5. Claude terminal opens automatically (if enabled)
+
+File Selection:
+- Press <leader>cf (or your configured key) to open file picker
+- Navigate using FZF controls
+- Tab to select multiple files
+- Enter to send to Claude
+
+Content Search:
+- Press <leader>cg to open live grep
+- Type search query
+- Select matching results
+- Send to Claude for analysis
+
+Buffer Management:
+- Press <leader>cb to see open buffers
+- Select buffers to include in Claude context
+
+Git Integration:
+- Press <leader>cgf for Git-tracked files
+- Respects .gitignore patterns
+- Shows only version-controlled files
+
+==============================================================================
+5. COMMANDS                                                 *claude-fzf-commands*
+
+*:ClaudeFzf* [{subcommand}]
+    Main command with optional subcommands:
+    - files    : Open file picker
+    - grep     : Open content search
+    - buffers  : Open buffer picker
+    - git      : Open Git file picker
+
+*:ClaudeFzfFiles* [{options}]
+    Open file picker with optional JSON options
+
+*:ClaudeFzfGrep* [{options}]
+    Open live grep search with optional JSON options
+
+*:ClaudeFzfBuffers* [{options}]
+    Open buffer picker with optional JSON options
+
+*:ClaudeFzfGitFiles* [{options}]
+    Open Git file picker with optional JSON options
+
+==============================================================================
+6. KEY MAPPINGS                                             *claude-fzf-keymaps*
+
+Default key mappings (configurable):
+
+*<leader>cf*        Open file picker
+*<leader>cg*        Open content search
+*<leader>cb*        Open buffer picker
+*<leader>cgf*       Open Git file picker
+
+Within FZF interface:
+*Tab*               Select/deselect item (multi-select)
+*Enter*             Confirm selection and send to Claude
+*Ctrl-c* / *Esc*    Cancel selection
+*Ctrl-j* / *Down*   Move down
+*Ctrl-k* / *Up*     Move up
+
+==============================================================================
+7. API                                                           *claude-fzf-api*
+
+Lua API functions:
+
+*require('claude-fzf').setup({opts})*
+    Initialize the plugin with configuration options
+
+*require('claude-fzf.integrations.fzf').files({opts})*
+    Programmatically open file picker
+
+*require('claude-fzf.integrations.fzf').live_grep({opts})*
+    Programmatically open content search
+
+*require('claude-fzf.integrations.fzf').buffers({opts})*
+    Programmatically open buffer picker
+
+*require('claude-fzf.integrations.fzf').git_files({opts})*
+    Programmatically open Git file picker
+
+Configuration API:
+
+*require('claude-fzf.config').get()*
+    Get current configuration
+
+*require('claude-fzf.config').get_keymaps()*
+    Get current key mappings
+
+*require('claude-fzf.config').get_claude_opts()*
+    Get Claude integration options
+
+==============================================================================
+8. TROUBLESHOOTING                                   *claude-fzf-troubleshooting*
+
+Common Issues:
+
+Q: Plugin doesn't work after installation
+A: Ensure all dependencies are installed:
+   - fzf-lua
+   - claudecode.nvim
+   Run :checkhealth claude-fzf to verify
+
+Q: Key mappings don't work
+A: Check for conflicts with existing mappings
+   Customize keymaps in setup() configuration
+
+Q: Files not appearing in picker
+A: Check file permissions and .gitignore patterns
+   Verify current working directory
+
+Q: Claude terminal doesn't open
+A: Ensure claudecode.nvim is properly configured
+   Check auto_open_terminal setting
+
+Q: Performance issues with large projects
+A: Adjust batch_size in configuration
+   Disable auto_context for better performance
+
+Q: Smart context extraction not working
+A: Install nvim-treesitter and language parsers
+   Ensure Tree-sitter parser exists for file type
+
+Health Check:
+Run :checkhealth claude-fzf to diagnose issues
+
+Logging:
+Check log file at ~/.local/share/nvim/log/claude-fzf.log
+Adjust logging level in configuration
+
+==============================================================================
+vim:tw=78:ts=8:ft=help:norl:

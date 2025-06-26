@@ -1,0 +1,268 @@
+*claude-fzf.nvim*           增强的 FZF 集成，用于 Claude AI 交互
+
+==============================================================================
+目录                                                        *claude-fzf-contents*
+
+1. 介绍 .................................. |claude-fzf-introduction|
+2. 安装 .................................. |claude-fzf-installation|
+3. 配置 .................................. |claude-fzf-configuration|
+4. 使用方法 ............................... |claude-fzf-usage|
+5. 命令 .................................. |claude-fzf-commands|
+6. 快捷键映射 ............................. |claude-fzf-keymaps|
+7. API ................................... |claude-fzf-api|
+8. 故障排除 ............................... |claude-fzf-troubleshooting|
+
+==============================================================================
+1. 介绍                                                 *claude-fzf-introduction*
+
+claude-fzf.nvim 是一个强大的 Neovim 插件，它在文件选择和 Claude AI 驱动的开发
+之间架起了桥梁。它提供了一个直观的界面，使用 fzf-lua 来选择文件、搜索内容，
+并无缝地将选定的上下文发送给 Claude 进行分析和协助。
+
+主要特性：
+- 使用模糊查找进行文件选择
+- 使用实时 grep 进行内容搜索
+- 缓冲区和 Git 文件集成
+- 带有进度指示器的批处理
+- 智能上下文提取
+- 自动终端集成
+
+系统要求：
+- Neovim 0.9+
+- fzf-lua 插件
+- claudecode.nvim 插件
+
+可选依赖：
+- nvim-treesitter（用于智能上下文提取）
+
+==============================================================================
+2. 安装                                                 *claude-fzf-installation*
+
+使用 lazy.nvim： >
+    {
+        'your-username/claude-fzf.nvim',
+        dependencies = {
+            'ibhagwan/fzf-lua',
+            'coder/claudecode.nvim'
+        },
+        config = function()
+            require('claude-fzf').setup()
+        end
+    }
+<
+
+使用 packer.nvim： >
+    use {
+        'your-username/claude-fzf.nvim',
+        requires = {
+            'ibhagwan/fzf-lua',
+            'coder/claudecode.nvim'
+        },
+        config = function()
+            require('claude-fzf').setup()
+        end
+    }
+<
+
+==============================================================================
+3. 配置                                               *claude-fzf-configuration*
+
+默认配置： >
+    require('claude-fzf').setup({
+        batch_size = 5,
+        show_progress = true,
+        auto_open_terminal = true,
+        auto_context = true,
+        
+        -- 日志配置
+        logging = {
+            level = "INFO",              -- TRACE, DEBUG, INFO, WARN, ERROR
+            file_logging = true,         -- 启用文件日志
+            console_logging = true,      -- 启用控制台日志
+            show_caller = true,          -- 显示调用位置
+            timestamp = true,            -- 显示时间戳
+        },
+        
+        -- 快捷键映射
+        keymaps = {
+            files = "<leader>cf",
+            grep = "<leader>cg", 
+            buffers = "<leader>cb",
+            git_files = "<leader>cgf",
+        },
+        
+        -- 模糊查找器选项
+        fzf_opts = {
+            preview = {
+                border = 'sharp',
+                title = '预览',
+                wrap = 'wrap',
+            },
+            winopts = {
+                height = 0.8,
+                width = 0.8,
+                backdrop = 60,
+            }
+        },
+        
+        -- Claude 集成选项
+        claude_opts = {
+            auto_open_terminal = true,
+            context_lines = 5,
+            source_tag = "claude-fzf",
+        },
+    })
+<
+
+配置选项：
+
+*claude-fzf-batch_size*         每批处理的文件数量
+*claude-fzf-show_progress*      在处理过程中显示进度通知
+*claude-fzf-auto_open_terminal* 自动打开 Claude 终端
+*claude-fzf-auto_context*       启用自动上下文提取
+*claude-fzf-logging*            日志系统配置
+*claude-fzf-keymaps*            快捷键映射定义
+*claude-fzf-fzf_opts*           FZF 显示选项
+*claude-fzf-claude_opts*        Claude 集成选项
+
+==============================================================================
+4. 使用方法                                                   *claude-fzf-usage*
+
+基本工作流程：
+1. 使用快捷键或命令打开文件/内容选择器
+2. 使用 FZF 界面选择文件或搜索结果
+3. 使用 Tab 键多选项目
+4. 按 Enter 将选定的项目发送给 Claude
+5. Claude 终端自动打开（如果启用）
+
+文件选择：
+- 按 <leader>cf（或您配置的键）打开文件选择器
+- 使用 FZF 控件导航
+- Tab 键选择多个文件
+- Enter 键发送给 Claude
+
+内容搜索：
+- 按 <leader>cg 打开实时 grep
+- 输入搜索查询
+- 选择匹配的结果
+- 发送给 Claude 进行分析
+
+缓冲区管理：
+- 按 <leader>cb 查看打开的缓冲区
+- 选择要包含在 Claude 上下文中的缓冲区
+
+Git 集成：
+- 按 <leader>cgf 查看 Git 跟踪的文件
+- 遵循 .gitignore 模式
+- 仅显示版本控制的文件
+
+==============================================================================
+5. 命令                                                     *claude-fzf-commands*
+
+*:ClaudeFzf* [{子命令}]
+    主命令，可选子命令：
+    - files    : 打开文件选择器
+    - grep     : 打开内容搜索
+    - buffers  : 打开缓冲区选择器
+    - git      : 打开 Git 文件选择器
+
+*:ClaudeFzfFiles* [{选项}]
+    打开文件选择器，可选 JSON 选项
+
+*:ClaudeFzfGrep* [{选项}]
+    打开实时 grep 搜索，可选 JSON 选项
+
+*:ClaudeFzfBuffers* [{选项}]
+    打开缓冲区选择器，可选 JSON 选项
+
+*:ClaudeFzfGitFiles* [{选项}]
+    打开 Git 文件选择器，可选 JSON 选项
+
+==============================================================================
+6. 快捷键映射                                               *claude-fzf-keymaps*
+
+默认快捷键映射（可配置）：
+
+*<leader>cf*        打开文件选择器
+*<leader>cg*        打开内容搜索
+*<leader>cb*        打开缓冲区选择器
+*<leader>cgf*       打开 Git 文件选择器
+
+在 FZF 界面内：
+*Tab*               选择/取消选择项目（多选）
+*Enter*             确认选择并发送给 Claude
+*Ctrl-c* / *Esc*    取消选择
+*Ctrl-j* / *Down*   向下移动
+*Ctrl-k* / *Up*     向上移动
+
+==============================================================================
+7. API                                                           *claude-fzf-api*
+
+Lua API 函数：
+
+*require('claude-fzf').setup({opts})*
+    使用配置选项初始化插件
+
+*require('claude-fzf.integrations.fzf').files({opts})*
+    以编程方式打开文件选择器
+
+*require('claude-fzf.integrations.fzf').live_grep({opts})*
+    以编程方式打开内容搜索
+
+*require('claude-fzf.integrations.fzf').buffers({opts})*
+    以编程方式打开缓冲区选择器
+
+*require('claude-fzf.integrations.fzf').git_files({opts})*
+    以编程方式打开 Git 文件选择器
+
+配置 API：
+
+*require('claude-fzf.config').get()*
+    获取当前配置
+
+*require('claude-fzf.config').get_keymaps()*
+    获取当前快捷键映射
+
+*require('claude-fzf.config').get_claude_opts()*
+    获取 Claude 集成选项
+
+==============================================================================
+8. 故障排除                                           *claude-fzf-troubleshooting*
+
+常见问题：
+
+问：安装后插件不工作
+答：确保所有依赖项都已安装：
+   - fzf-lua
+   - claudecode.nvim
+   运行 :checkhealth claude-fzf 进行验证
+
+问：快捷键不工作
+答：检查与现有映射的冲突
+   在 setup() 配置中自定义快捷键
+
+问：文件未出现在选择器中
+答：检查文件权限和 .gitignore 模式
+   验证当前工作目录
+
+问：Claude 终端未打开
+答：确保 claudecode.nvim 配置正确
+   检查 auto_open_terminal 设置
+
+问：大型项目性能问题
+答：在配置中调整 batch_size
+   禁用 auto_context 以获得更好的性能
+
+问：智能上下文提取不工作
+答：安装 nvim-treesitter 和语言解析器
+   确保文件类型存在 Tree-sitter 解析器
+
+健康检查：
+运行 :checkhealth claude-fzf 来诊断问题
+
+日志记录：
+检查日志文件：~/.local/share/nvim/log/claude-fzf.log
+在配置中调整日志级别
+
+==============================================================================
+vim:tw=78:ts=8:ft=help:norl:
