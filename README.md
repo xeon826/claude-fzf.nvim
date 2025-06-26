@@ -1,36 +1,38 @@
 # claude-fzf.nvim
 
-**fzf-lua 与 claudecode.nvim 的无缝集成**
+**Seamless integration between fzf-lua and claudecode.nvim**
 
-claude-fzf.nvim 是一个专业的 Neovim 插件，将 [fzf-lua](https://github.com/ibhagwan/fzf-lua) 强大的文件选择功能与 [claudecode.nvim](https://github.com/coder/claudecode.nvim) 的 AI 上下文管理能力完美整合，为使用 Claude Code 的开发者提供卓越的工作流程体验。
+claude-fzf.nvim is a professional Neovim plugin that perfectly integrates the powerful file selection capabilities of [fzf-lua](https://github.com/ibhagwan/fzf-lua) with the AI context management features of [claudecode.nvim](https://github.com/coder/claudecode.nvim), providing an exceptional workflow experience for developers using Claude Code.
 
-## ✨ 特性
+[中文文档](README-zh.md) | [English Documentation](README.md)
 
-- 🚀 **批量文件选择**: 使用 fzf-lua 多选功能批量添加文件到 Claude 上下文
-- 🔍 **智能搜索集成**: 通过 grep 搜索并直接发送相关代码片段到 Claude
-- 🌳 **智能上下文提取**: 基于 Tree-sitter 的语法感知上下文检测
-- 📁 **多种选择器**: 支持文件、缓冲区、Git 文件等多种选择方式
-- ⚡ **性能优化**: 懒加载、缓存和批处理确保流畅体验
-- 🎨 **可视化反馈**: 进度指示器和状态通知
-- 🛠️ **高度可配置**: 丰富的配置选项和自定义键映射
-- 🔧 **健康检查**: 内置诊断功能确保环境正确配置
+## ✨ Features
 
-## 📋 依赖要求
+- 🚀 **Batch File Selection**: Use fzf-lua's multi-select functionality to batch add files to Claude context
+- 🔍 **Smart Search Integration**: Search with grep and send relevant code snippets directly to Claude
+- 🌳 **Intelligent Context Extraction**: Tree-sitter based syntax-aware context detection
+- 📁 **Multiple Pickers**: Support for files, buffers, Git files and more selection methods
+- ⚡ **Performance Optimized**: Lazy loading, caching, and batch processing ensure smooth experience
+- 🎨 **Visual Feedback**: Progress indicators and status notifications
+- 🛠️ **Highly Configurable**: Rich configuration options and custom keymaps
+- 🔧 **Health Check**: Built-in diagnostics to ensure proper environment setup
+
+## 📋 Requirements
 
 - **Neovim**: >= 0.9.0
-- **必需插件**:
-  - [fzf-lua](https://github.com/ibhagwan/fzf-lua) - 模糊查找界面
-  - [claudecode.nvim](https://github.com/coder/claudecode.nvim) - Claude Code 集成
-- **可选依赖**:
-  - [nvim-treesitter](https://github.com/nvim-treesitter/nvim-treesitter) - 智能上下文提取
+- **Required Plugins**:
+  - [fzf-lua](https://github.com/ibhagwan/fzf-lua) - Fuzzy finder interface
+  - [claudecode.nvim](https://github.com/coder/claudecode.nvim) - Claude Code integration
+- **Optional Dependencies**:
+  - [nvim-treesitter](https://github.com/nvim-treesitter/nvim-treesitter) - Smart context extraction
 
-## 📦 安装
+## 📦 Installation
 
-### 使用 lazy.nvim
+### Using lazy.nvim
 
 ```lua
 {
-  "username/claude-fzf.nvim", -- 替换为实际的仓库地址
+  "pittcat/claude-fzf.nvim",
   dependencies = {
     "ibhagwan/fzf-lua",
     "coder/claudecode.nvim"
@@ -41,25 +43,25 @@ claude-fzf.nvim 是一个专业的 Neovim 插件，将 [fzf-lua](https://github.
   },
   cmd = { "ClaudeFzf", "ClaudeFzfFiles", "ClaudeFzfGrep", "ClaudeFzfBuffers", "ClaudeFzfGitFiles" },
   keys = {
-    { "<leader>cf", "<cmd>ClaudeFzfFiles<cr>", desc = "Claude: 添加文件" },
-    { "<leader>cg", "<cmd>ClaudeFzfGrep<cr>", desc = "Claude: 搜索并添加" },
-    { "<leader>cb", "<cmd>ClaudeFzfBuffers<cr>", desc = "Claude: 添加缓冲区" },
-    { "<leader>cgf", "<cmd>ClaudeFzfGitFiles<cr>", desc = "Claude: 添加 Git 文件" },
+    { "<leader>cf", "<cmd>ClaudeFzfFiles<cr>", desc = "Claude: Add files" },
+    { "<leader>cg", "<cmd>ClaudeFzfGrep<cr>", desc = "Claude: Search and add" },
+    { "<leader>cb", "<cmd>ClaudeFzfBuffers<cr>", desc = "Claude: Add buffers" },
+    { "<leader>cgf", "<cmd>ClaudeFzfGitFiles<cr>", desc = "Claude: Add Git files" },
   },
 }
 ```
 
-### 使用 vim-plug
+### Using vim-plug
 
 ```vim
-" 在你的 init.vim 或 vimrc 中添加
+" Add to your init.vim or vimrc
 Plug 'ibhagwan/fzf-lua'
 Plug 'coder/claudecode.nvim'
-Plug 'username/claude-fzf.nvim'  " 替换为实际的仓库地址
+Plug 'pittcat/claude-fzf.nvim'
 
-" 然后运行 :PlugInstall
+" Then run :PlugInstall
 
-" 在 init.vim 中配置（使用 Vimscript）
+" Configure in init.vim (using Vimscript)
 lua << EOF
 require('claude-fzf').setup({
   auto_context = true,
@@ -73,32 +75,32 @@ require('claude-fzf').setup({
 })
 EOF
 
-" 或者如果使用 init.lua，在文件中添加：
+" Or if using init.lua, add to the file:
 " require('claude-fzf').setup({
 "   auto_context = true,
 "   batch_size = 10,
 " })
 ```
 
-**安装步骤：**
+**Installation Steps:**
 
-1. 在你的 `~/.vimrc` 或 `~/.config/nvim/init.vim` 中添加上述 Plug 配置
-2. 重启 Neovim 或重新加载配置：`:source %`
-3. 运行安装命令：`:PlugInstall`
-4. 等待安装完成
-5. 重启 Neovim 享受新功能！
+1. Add the above Plug configuration to your `~/.vimrc` or `~/.config/nvim/init.vim`
+2. Restart Neovim or reload configuration: `:source %`
+3. Run install command: `:PlugInstall`
+4. Wait for installation to complete
+5. Restart Neovim and enjoy the new features!
 
-**快速验证安装：**
+**Quick Installation Verification:**
 ```vim
-:ClaudeFzfHealth  " 检查插件健康状态
-:ClaudeFzfFiles   " 测试文件选择器
+:ClaudeFzfHealth  " Check plugin health status
+:ClaudeFzfFiles   " Test file picker
 ```
 
-### 使用 packer.nvim
+### Using packer.nvim
 
 ```lua
 use {
-  "username/claude-fzf.nvim",
+  "pittcat/claude-fzf.nvim",
   requires = {
     "ibhagwan/fzf-lua",
     "coder/claudecode.nvim"
@@ -112,244 +114,244 @@ use {
 }
 ```
 
-## ⚙️ 配置
+## ⚙️ Configuration
 
-### 默认配置
+### Default Configuration
 
 ```lua
 require('claude-fzf').setup({
-  -- 基本设置
-  batch_size = 5,                    -- 批处理大小
-  show_progress = true,              -- 显示进度指示器
-  auto_open_terminal = true,         -- 自动打开 Claude 终端
-  auto_context = true,               -- 启用智能上下文检测
+  -- Basic settings
+  batch_size = 5,                    -- Batch processing size
+  show_progress = true,              -- Show progress indicators
+  auto_open_terminal = true,         -- Auto open Claude terminal
+  auto_context = true,               -- Enable smart context detection
   
-  -- 日志配置
+  -- Logging configuration
   logging = {
     level = "INFO",              -- TRACE, DEBUG, INFO, WARN, ERROR
-    file_logging = true,         -- 启用文件日志
-    console_logging = true,      -- 启用控制台日志
-    show_caller = true,          -- 显示调用位置
-    timestamp = true,            -- 显示时间戳
+    file_logging = true,         -- Enable file logging
+    console_logging = true,      -- Enable console logging
+    show_caller = true,          -- Show caller location
+    timestamp = true,            -- Show timestamps
   },
   
-  -- 键映射设置
+  -- Keymap settings
   keymaps = {
-    files = "<leader>cf",            -- 文件选择器
-    grep = "<leader>cg",             -- 搜索选择器
-    buffers = "<leader>cb",          -- 缓冲区选择器
-    git_files = "<leader>cgf",       -- Git 文件选择器
+    files = "<leader>cf",            -- File picker
+    grep = "<leader>cg",             -- Search picker
+    buffers = "<leader>cb",          -- Buffer picker
+    git_files = "<leader>cgf",       -- Git files picker
   },
   
-  -- fzf-lua 配置
+  -- fzf-lua configuration
   fzf_opts = {
     preview = {
       border = 'sharp',
-      title = '预览',
+      title = 'Preview',
       wrap = 'wrap',
     },
     winopts = {
-      height = 0.8,              -- 窗口高度比例
-      width = 0.8,               -- 窗口宽度比例
-      backdrop = 60,             -- 背景透明度
+      height = 0.8,              -- Window height ratio
+      width = 0.8,               -- Window width ratio
+      backdrop = 60,             -- Background transparency
     }
   },
   
-  -- Claude 集成配置
+  -- Claude integration configuration
   claude_opts = {
-    auto_open_terminal = true,       -- 发送后自动打开终端
-    context_lines = 5,               -- 上下文额外行数
-    source_tag = "claude-fzf",       -- 来源标签
+    auto_open_terminal = true,       -- Auto open terminal after sending
+    context_lines = 5,               -- Additional context lines
+    source_tag = "claude-fzf",       -- Source tag
   },
 })
 ```
 
-## 🚀 使用方法
+## 🚀 Usage
 
-### 命令
+### Commands
 
-| 命令 | 描述 |
-|------|------|
-| `:ClaudeFzfFiles` | 使用 fzf 选择文件发送到 Claude |
-| `:ClaudeFzfGrep` | 使用 fzf grep 搜索并发送到 Claude |
-| `:ClaudeFzfBuffers` | 使用 fzf 选择缓冲区发送到 Claude |
-| `:ClaudeFzfGitFiles` | 使用 fzf 选择 Git 文件发送到 Claude |
-| `:ClaudeFzf [subcommand]` | 通用命令，支持子命令 |
-| `:ClaudeFzfHealth` | 检查插件健康状态 |
-| `:ClaudeFzfDebug [option]` | 调试工具和日志管理 |
+| Command | Description |
+|---------|-------------|
+| `:ClaudeFzfFiles` | Use fzf to select files to send to Claude |
+| `:ClaudeFzfGrep` | Use fzf grep to search and send to Claude |
+| `:ClaudeFzfBuffers` | Use fzf to select buffers to send to Claude |
+| `:ClaudeFzfGitFiles` | Use fzf to select Git files to send to Claude |
+| `:ClaudeFzf [subcommand]` | Generic command supporting subcommands |
+| `:ClaudeFzfHealth` | Check plugin health status |
+| `:ClaudeFzfDebug [option]` | Debug tools and log management |
 
-### 键盘快捷键（默认）
+### Keyboard Shortcuts (Default)
 
-| 键映射 | 功能 |
-|--------|------|
-| `<leader>cf` | 打开文件选择器 |
-| `<leader>cg` | 打开搜索选择器 |
-| `<leader>cb` | 打开缓冲区选择器 |
-| `<leader>cgf` | 打开 Git 文件选择器 |
+| Keymap | Function |
+|--------|----------|
+| `<leader>cf` | Open file picker |
+| `<leader>cg` | Open search picker |
+| `<leader>cb` | Open buffer picker |
+| `<leader>cgf` | Open Git files picker |
 
-### fzf 界面快捷键
+### fzf Interface Shortcuts
 
-在 fzf 选择器中：
+In fzf pickers:
 
-| 快捷键 | 功能 |
-|--------|------|
-| `Tab` | 多选/取消选择 |
-| `Enter` | 确认选择并发送到 Claude |
-| `Ctrl-y` | 发送时包含智能上下文 |
-| `Ctrl-d` | 发送目录（仅文件选择器） |
-| `Alt-a` | 全选/取消全选 |
-| `Esc` | 取消并退出 |
+| Shortcut | Function |
+|----------|----------|
+| `Tab` | Multi-select/deselect |
+| `Enter` | Confirm selection and send to Claude |
+| `Ctrl-y` | Send with smart context |
+| `Ctrl-d` | Send directory (files picker only) |
+| `Alt-a` | Select all/deselect all |
+| `Esc` | Cancel and exit |
 
-## 📚 API 参考
+## 📚 API Reference
 
-### 主要函数
+### Main Functions
 
 ```lua
--- 设置插件
+-- Setup plugin
 require('claude-fzf').setup(opts)
 
--- 文件选择器
+-- File picker
 require('claude-fzf').files(opts)
 
--- 搜索选择器  
+-- Search picker  
 require('claude-fzf').grep_add(opts)
 
--- 缓冲区选择器
+-- Buffer picker
 require('claude-fzf').buffers(opts)
 
--- Git 文件选择器
+-- Git files picker
 require('claude-fzf').git_files(opts)
 
--- 获取当前配置
+-- Get current configuration
 require('claude-fzf').get_config()
 ```
 
-### 配置选项
+### Configuration Options
 
 ```lua
 ---@class ClaudeFzf.Config
----@field batch_size number 批处理大小
----@field show_progress boolean 显示进度
----@field auto_open_terminal boolean 自动打开终端
----@field auto_context boolean 智能上下文
----@field keymaps table<string, string> 键映射
----@field fzf_opts table fzf-lua 配置
----@field claude_opts table Claude 集成配置
+---@field batch_size number Batch processing size
+---@field show_progress boolean Show progress
+---@field auto_open_terminal boolean Auto open terminal
+---@field auto_context boolean Smart context
+---@field keymaps table<string, string> Keymaps
+---@field fzf_opts table fzf-lua configuration
+---@field claude_opts table Claude integration configuration
 ```
 
-## 🔧 健康检查
+## 🔧 Health Check
 
-运行健康检查以确保插件正确配置：
+Run health check to ensure plugin is properly configured:
 
 ```vim
 :ClaudeFzfHealth
 ```
 
-健康检查将验证：
-- Neovim 版本兼容性
-- 必需依赖是否安装
-- 配置是否有效
-- 集成功能是否可用
+Health check will verify:
+- Neovim version compatibility
+- Required dependencies installation
+- Configuration validity
+- Integration functionality availability
 
-## 🎯 高级用法
+## 🎯 Advanced Usage
 
-### 自定义动作
+### Custom Actions
 
 ```lua
 local claude_fzf = require('claude-fzf')
 
--- 自定义文件选择器
+-- Custom file picker
 claude_fzf.files({
-  prompt = '选择配置文件> ',
+  prompt = 'Select config files> ',
   cwd = '~/.config',
   fzf_opts = {
-    ['--header'] = '选择配置文件添加到 Claude'
+    ['--header'] = 'Select config files to add to Claude'
   }
 })
 ```
 
-### 程序化使用
+### Programmatic Usage
 
 ```lua
 local actions = require('claude-fzf.actions')
 
--- 直接发送文件列表到 Claude
+-- Send file list directly to Claude
 local files = {'src/main.lua', 'src/config.lua'}
 actions.send_to_claude(files, { with_context = true })
 ```
 
-## 🐛 故障排除
+## 🐛 Troubleshooting
 
-### 常见问题
+### Common Issues
 
-**Q: 提示 "fzf-lua 未找到"**
-A: 请确保已安装 fzf-lua 插件并正确配置
+**Q: "fzf-lua not found" error**
+A: Please ensure fzf-lua plugin is installed and properly configured
 
-**Q: 提示 "claudecode.nvim 未找到"**
-A: 请确保已安装 claudecode.nvim 插件并正确配置
+**Q: "claudecode.nvim not found" error**
+A: Please ensure claudecode.nvim plugin is installed and properly configured
 
-**Q: 智能上下文不工作**
-A: 请确保安装了 nvim-treesitter 并为当前文件类型安装了解析器
+**Q: Smart context not working**
+A: Please ensure nvim-treesitter is installed with parsers for current file type
 
-**Q: 键映射冲突**
-A: 在配置中自定义键映射或设置为空字符串禁用
+**Q: Keymap conflicts**
+A: Customize keymaps in configuration or set to empty string to disable
 
-### 调试和日志
+### Debugging and Logging
 
-插件内置了完整的日志系统，方便调试问题：
+Plugin includes complete logging system for debugging issues:
 
-**启用调试日志：**
+**Enable debug logging:**
 ```vim
-:ClaudeFzfDebug on        " 启用调试日志
-:ClaudeFzfDebug trace     " 启用详细跟踪日志
+:ClaudeFzfDebug on        " Enable debug logging
+:ClaudeFzfDebug trace     " Enable detailed trace logging
 ```
 
-**查看日志：**
+**View logs:**
 ```vim
-:ClaudeFzfDebug log       " 打开日志文件
-:ClaudeFzfDebug stats     " 显示日志统计信息
+:ClaudeFzfDebug log       " Open log file
+:ClaudeFzfDebug stats     " Show log statistics
 ```
 
-**配置日志选项：**
+**Configure logging options:**
 ```lua
 require('claude-fzf').setup({
   logging = {
     level = "DEBUG",           -- TRACE, DEBUG, INFO, WARN, ERROR
-    file_logging = true,       -- 启用文件日志
-    console_logging = true,    -- 启用控制台日志
-    show_caller = true,        -- 显示调用位置
-    timestamp = true,          -- 显示时间戳
+    file_logging = true,       -- Enable file logging
+    console_logging = true,    -- Enable console logging
+    show_caller = true,        -- Show caller location
+    timestamp = true,          -- Show timestamps
   },
 })
 ```
 
-**日志文件位置：**
-- 默认路径：`~/.local/state/nvim/log/claude-fzf.log`
-- 使用 `:ClaudeFzfDebug log` 直接打开日志文件
+**Log file location:**
+- Default path: `~/.local/state/nvim/log/claude-fzf.log`
+- Use `:ClaudeFzfDebug log` to directly open log file
 
-**常用调试命令：**
+**Common debug commands:**
 ```vim
-:ClaudeFzfDebug           " 显示帮助信息
-:ClaudeFzfDebug on        " 启用调试
-:ClaudeFzfDebug off       " 禁用调试
-:ClaudeFzfDebug clear     " 清空日志文件
-:ClaudeFzfHealth          " 检查插件状态
+:ClaudeFzfDebug           " Show help information
+:ClaudeFzfDebug on        " Enable debugging
+:ClaudeFzfDebug off       " Disable debugging
+:ClaudeFzfDebug clear     " Clear log file
+:ClaudeFzfHealth          " Check plugin status
 ```
 
-## 🤝 贡献
+## 🤝 Contributing
 
-欢迎贡献！请阅读 [贡献指南](CONTRIBUTING.md) 了解详情。
+Contributions are welcome! Please read the [Contributing Guide](CONTRIBUTING.md) for details.
 
-## 📄 许可证
+## 📄 License
 
-MIT License. 详见 [LICENSE](LICENSE) 文件。
+MIT License. See [LICENSE](LICENSE) file for details.
 
-## 🙏 致谢
+## 🙏 Acknowledgments
 
-- [fzf-lua](https://github.com/ibhagwan/fzf-lua) - 强大的模糊查找界面
-- [claudecode.nvim](https://github.com/coder/claudecode.nvim) - Claude Code 集成
-- [nvim-treesitter](https://github.com/nvim-treesitter/nvim-treesitter) - 语法分析支持
+- [fzf-lua](https://github.com/ibhagwan/fzf-lua) - Powerful fuzzy finder interface
+- [claudecode.nvim](https://github.com/coder/claudecode.nvim) - Claude Code integration
+- [nvim-treesitter](https://github.com/nvim-treesitter/nvim-treesitter) - Syntax analysis support
 
 ---
 
-**创造更好的 Claude Code 开发体验** 🚀
+**Creating a better Claude Code development experience** 🚀
