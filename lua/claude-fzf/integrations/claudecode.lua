@@ -130,13 +130,30 @@ function M.send_grep_results(selections, opts)
   local file_selections = {}
   
   for _, line in ipairs(selections) do
-    local file, line_num, content = line:match("^([^:]+):(%d+):(.*)$")
+    -- Clean Unicode icons from grep results first
+    local cleaned_line = M.parse_selection(line) or line
+    
+    -- Handle both formats: "file:line:content" and "file:line:column:content"
+    local file, line_num, col_or_content, content = cleaned_line:match("^([^:]+):(%d+):(%d*):?(.*)$")
+    
     if file and line_num then
+      -- If col_or_content is a number, then content is the 4th capture, otherwise it's the 3rd
+      local actual_content
+      if content and content ~= "" then
+        -- Format: file:line:column:content
+        actual_content = content
+      else
+        -- Format: file:line:content (col_or_content is actually content)
+        actual_content = col_or_content or ""
+      end
+      
       table.insert(file_selections, {
         file = file,
         line = tonumber(line_num),
-        content = content
+        content = actual_content
       })
+    else
+      logger.warn("[GREP_PARSE] Failed to parse grep line: '%s'", line)
     end
   end
   
@@ -314,7 +331,8 @@ function M.parse_selection(selection)
   file_path = file_path:gsub("\239\146\138", "")  -- Specific file icon from logs
   file_path = file_path:gsub("\238\156\130", "")  -- Another icon pattern
   file_path = file_path:gsub("\238\152\139", "")  -- Icon from logs [238, 152, 139]
-  file_path = file_path:gsub("\238\152\149", "")  -- Icon from logs [238, 152, 149]
+  file_path = file_path:gsub("\238\152\149", "")  -- Icon from logs [238, 152, 149] 
+  file_path = file_path:gsub("\238\152\134", "")  -- Icon from logs [238, 152, 134]
   
   -- Remove common file icons by specific known sequences (not dangerous ranges!)
   -- These are Nerd Font file type icons commonly used by nvim-web-devicons, starship, zsh, etc.
