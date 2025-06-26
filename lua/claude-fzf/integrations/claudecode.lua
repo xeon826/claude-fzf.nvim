@@ -135,10 +135,22 @@ function M.send_grep_results(selections, opts)
     -- Clean Unicode icons from grep results first
     local cleaned_line = line
     
-    -- Remove specific Unicode spaces and icons (same as parse_selection but inline)
-    cleaned_line = cleaned_line:gsub("[\226\128][\130-\139]", "")  -- Unicode spaces
-    cleaned_line = cleaned_line:gsub("[\238][\152\156\153\160\180][\128-\191]", "")  -- Common Nerd Font icons
-    cleaned_line = cleaned_line:gsub("[\239][\128-\131][\128-\191]", "")  -- Font Awesome icons
+    -- Remove specific Unicode spaces and icons based on byte sequences from logs
+    -- Remove Unicode spaces (U+2000-U+200F range)
+    cleaned_line = cleaned_line:gsub("\226\128\130", "")  -- U+2002 EN SPACE
+    cleaned_line = cleaned_line:gsub("\226\128\131", "")  -- U+2003 EM SPACE  
+    cleaned_line = cleaned_line:gsub("\226\128\137", "")  -- U+2009 THIN SPACE
+    cleaned_line = cleaned_line:gsub("\226\128\138", "")  -- U+200A HAIR SPACE
+    cleaned_line = cleaned_line:gsub("\226\128\139", "")  -- U+200B ZERO WIDTH SPACE
+    
+    -- Remove specific icon from logs: [238, 152, 134]
+    cleaned_line = cleaned_line:gsub("\238\152\134", "")
+    
+    -- Remove other common Nerd Font icons
+    cleaned_line = cleaned_line:gsub("\238\152\139", "")  -- [238, 152, 139]
+    cleaned_line = cleaned_line:gsub("\238\152\149", "")  -- [238, 152, 149]
+    cleaned_line = cleaned_line:gsub("\238\156\130", "")  -- [238, 156, 130]
+    
     cleaned_line = vim.trim(cleaned_line)
     
     logger.debug("[GREP_PARSE] After cleanup: '%s'", cleaned_line)
@@ -161,16 +173,26 @@ function M.send_grep_results(selections, opts)
         logger.debug("[GREP_PARSE] Parsed - file: '%s', line: %s, column: %s", 
           file_path, line_num, col_num or "none")
         
+        -- Convert relative path to absolute if needed
+        local abs_file_path = file_path
+        if not vim.startswith(file_path, '/') then
+          -- Get current working directory from fzf context or vim
+          local cwd = vim.loop.cwd()
+          abs_file_path = cwd .. '/' .. file_path
+          logger.debug("[GREP_PARSE] Converted relative path: '%s' -> '%s'", file_path, abs_file_path)
+        end
+        
         -- Validate file exists before adding to selections
-        local file_exists = vim.loop.fs_stat(file_path) ~= nil
+        local file_exists = vim.loop.fs_stat(abs_file_path) ~= nil
         if file_exists then
           table.insert(file_selections, {
-            file = file_path,
+            file = abs_file_path,
             line = tonumber(line_num),
             content = content or ""
           })
+          logger.debug("[GREP_PARSE] Added file to selections: '%s'", abs_file_path)
         else
-          logger.warn("[GREP_PARSE] File does not exist: '%s'", file_path)
+          logger.warn("[GREP_PARSE] File does not exist: '%s'", abs_file_path)
         end
       else
         logger.warn("[GREP_PARSE] Failed to parse line/content from: '%s'", rest)
