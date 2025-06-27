@@ -42,10 +42,7 @@ function M.send_selections(selections, opts)
     if file_info then
       logger.debug("Parsed file info: %s", vim.inspect(file_info))
       
-      -- 只在开始时显示进度通知
-      if config.should_show_progress() and i == 1 then
-        notify.progress("Sending to Claude...", { id = 'claude_send_progress' })
-      end
+      -- Progress notifications disabled - only show completion notification
       
       local success, err
       if opts.with_context and config.has_auto_context() then
@@ -262,10 +259,7 @@ function M.send_grep_results(selections, opts)
   total = #file_selections
   
   for i, selection in ipairs(file_selections) do
-    -- 只在开始时显示进度通知
-    if config.should_show_progress() and i == 1 then
-      notify.progress("Sending search results to Claude...", { id = 'claude_grep_progress' })
-    end
+    -- Progress notifications disabled - only show completion notification
     
     local context_lines = claude_opts.context_lines or 5
     local start_line = math.max(1, selection.line - context_lines)
@@ -337,10 +331,7 @@ function M.send_buffer_selections(selections, opts)
         logger.debug("[BUFFER_SELECTIONS] File exists: '%s'", file_path)
       end
       
-      -- 只在开始时显示进度通知
-      if config.should_show_progress() and i == 1 then
-        notify.progress("Sending buffers to Claude...", { id = 'claude_buffer_progress' })
-      end
+      -- Progress notifications disabled - only show completion notification
       
       local success, err = logger.safe_call(
         claudecode.send_at_mention,

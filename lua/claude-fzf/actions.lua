@@ -113,10 +113,7 @@ function M.batch_process_with_progress(items, processor, opts)
   local completed = 0
   local notification
   
-  -- 只在开始时显示进度通知
-  if show_progress then
-    notify.progress("Processing items...", { id = 'batch_progress' })
-  end
+  -- Progress notifications disabled - only show completion notification
   
   local function process_batch(batch_start, batch_end)
     for i = batch_start, math.min(batch_end, total) do
