@@ -7,23 +7,23 @@ M.defaults = {
   auto_open_terminal = true,
   auto_context = true,
   
-  -- 通知配置
+  -- Notification settings
   notifications = {
-    enabled = true,              -- 是否启用通知
-    show_progress = true,        -- 显示进度通知
-    show_success = true,         -- 显示成功通知
-    show_errors = true,          -- 显示错误通知
-    use_snacks = true,           -- 优先使用 snacks.nvim (如果可用)
-    timeout = 3000,              -- 通知超时时间 (毫秒)
+    enabled = true,              -- Enable notifications
+    show_progress = true,        -- Show progress notifications
+    show_success = true,         -- Show success notifications
+    show_errors = true,          -- Show error notifications
+    use_snacks = true,           -- Prefer snacks.nvim if available
+    timeout = 3000,              -- Notification timeout (ms)
   },
   
-  -- 日志配置
+  -- Logging settings
   logging = {
     level = "INFO",              -- TRACE, DEBUG, INFO, WARN, ERROR
-    file_logging = true,         -- 启用文件日志
-    console_logging = true,      -- 启用控制台日志
-    show_caller = true,          -- 显示调用位置
-    timestamp = true,            -- 显示时间戳
+    file_logging = true,         -- Enable file logging
+    console_logging = true,      -- Enable console logging
+    show_caller = true,          -- Show caller information
+    timestamp = true,            -- Show timestamps
   },
   
   keymaps = {
@@ -36,7 +36,7 @@ M.defaults = {
   fzf_opts = {
     preview = {
       border = 'sharp',
-      title = '预览',
+      title = 'Preview',
       wrap = 'wrap',
     },
     winopts = {
@@ -54,20 +54,20 @@ M.defaults = {
   
   picker_opts = {
     files = {
-      prompt = '添加到 Claude> ',
-      header = '选择文件/目录添加到 Claude 上下文。Tab 多选，Enter 确认。',
+      prompt = 'Add to Claude> ',
+      header = 'Select files/directories to add to Claude context. Tab to multi-select, Enter to confirm.',
     },
     grep = {
       prompt = 'Claude Grep> ',
-      header = '搜索并选择结果添加到 Claude。Tab 多选，Enter 确认。',
+      header = 'Search and select results to add to Claude. Tab to multi-select, Enter to confirm.',
     },
     buffers = {
-      prompt = 'Claude 缓冲区> ',
-      header = '选择缓冲区添加到 Claude。Tab 多选，Enter 确认。',
+      prompt = 'Claude Buffers> ',
+      header = 'Select buffers to add to Claude. Tab to multi-select, Enter to confirm.',
     },
     git_files = {
-      prompt = 'Claude Git 文件> ',
-      header = '选择 Git 文件添加到 Claude。Tab 多选，Enter 确认。',
+      prompt = 'Claude Git Files> ',
+      header = 'Select Git files to add to Claude. Tab to multi-select, Enter to confirm.',
     }
   }
 }
@@ -77,11 +77,11 @@ M._config = {}
 function M.setup(opts)
   M._config = vim.tbl_deep_extend('force', M.defaults, opts or {})
   
-  -- 初始化日志系统
+  -- Initialize logging system
   local logger = require('claude-fzf.logger')
   local log_config = M._config.logging
   
-  -- 转换字符串级别为数字
+  -- Convert string level to number
   local log_level = logger.levels[log_config.level:upper()] or logger.levels.INFO
   
   logger.setup({

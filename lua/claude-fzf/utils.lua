@@ -108,12 +108,12 @@ function M.get_file_preview(file_path, max_lines)
   end
   
   if stat.type ~= 'file' then
-    return string.format("[目录] %s", file_path)
+    return string.format("[Directory] %s", file_path)
   end
   
   local file = io.open(file_path, 'r')
   if not file then
-    return "[无法读取文件]"
+    return "[Unable to read file]"
   end
   
   local lines = {}
@@ -124,7 +124,7 @@ function M.get_file_preview(file_path, max_lines)
     if line_count <= max_lines then
       table.insert(lines, line)
     else
-      table.insert(lines, string.format("... (还有 %d 行)", M.count_file_lines(file_path) - max_lines))
+      table.insert(lines, string.format("... (%d more lines)", M.count_file_lines(file_path) - max_lines))
       break
     end
   end

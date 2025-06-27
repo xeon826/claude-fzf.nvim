@@ -12,7 +12,7 @@ local function get_fzf()
       logger.info("fzf-lua loaded successfully")
     else
       logger.error("Failed to load fzf-lua: %s", fzf)
-      error('[claude-fzf] fzf-lua 未找到，请先安装 fzf-lua')
+      error('[claude-fzf] fzf-lua not found, please install fzf-lua first')
     end
   end
   return fzf_lua
@@ -81,10 +81,10 @@ function M.files(opts)
     local fzf = get_fzf()
     
     return fzf.files({
-      prompt = opts.prompt or 'Claude 文件> ',
+      prompt = opts.prompt or 'Add to Claude> ',
       multiselect = true,
       fzf_opts = {
-        ['--header'] = opts.header or '选择文件/目录添加到 Claude 上下文。Tab 多选。',
+        ['--header'] = opts.header or 'Select files/directories to add to Claude context. Tab to multi-select, Enter to confirm.',
       },
       winopts = opts.winopts or {},
       preview = opts.preview or {},
@@ -128,7 +128,7 @@ function M.live_grep(opts)
     prompt = opts.prompt or 'Claude Grep> ',
     multiselect = true,
     fzf_opts = {
-      ['--header'] = opts.header or '搜索并选择结果添加到 Claude。Tab 多选。',
+      ['--header'] = opts.header or 'Search and select results to add to Claude. Tab to multi-select.',
     },
     winopts = opts.winopts or {},
     preview = opts.preview or {},
@@ -149,10 +149,10 @@ function M.buffers(opts)
   local fzf = get_fzf()
   
   return fzf.buffers({
-    prompt = opts.prompt or 'Claude 缓冲区> ',
+    prompt = opts.prompt or 'Claude Buffers> ',
     multiselect = true,
     fzf_opts = {
-      ['--header'] = opts.header or '选择缓冲区添加到 Claude。Tab 多选。',
+      ['--header'] = opts.header or 'Select buffers to add to Claude. Tab to multi-select.',
     },
     winopts = opts.winopts or {},
     preview = opts.preview or {},
@@ -173,10 +173,10 @@ function M.git_files(opts)
   local fzf = get_fzf()
   
   return fzf.git_files({
-    prompt = opts.prompt or 'Claude Git 文件> ',
+    prompt = opts.prompt or 'Claude Git Files> ',
     multiselect = true,
     fzf_opts = {
-      ['--header'] = opts.header or '选择 Git 文件添加到 Claude。Tab 多选。',
+      ['--header'] = opts.header or 'Select Git files to add to Claude. Tab to multi-select.',
     },
     winopts = opts.winopts or {},
     preview = opts.preview or {},
@@ -197,15 +197,15 @@ end
 
 function M.check_health()
   if not M.is_available() then
-    return false, 'fzf-lua 未安装'
+    return false, 'fzf-lua not installed'
   end
   
   local fzf = get_fzf()
   if not fzf.files then
-    return false, 'fzf-lua 版本过旧，缺少必要功能'
+    return false, 'fzf-lua version too old, missing required features'
   end
   
-  return true, 'fzf-lua 可用'
+  return true, 'fzf-lua available'
 end
 
 return M

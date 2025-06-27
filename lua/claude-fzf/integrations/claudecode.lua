@@ -1,5 +1,6 @@
 local M = {}
 local logger = require('claude-fzf.logger')
+local notify = require('claude-fzf.notify')
 
 local ErrorTypes = {
   DEPENDENCY_MISSING = "dependency_missing",
@@ -23,7 +24,7 @@ function M.send_selections(selections, opts)
       dependency = 'claudecode.nvim',
       install_cmd = 'lazy.nvim: { "coder/claudecode.nvim" }'
     })
-    return false, "claudecode.nvim 未找到"
+    return false, "claudecode.nvim not found"
   end
   
   logger.debug("claudecode.nvim loaded successfully")
@@ -119,7 +120,7 @@ function M.send_grep_results(selections, opts)
       dependency = 'claudecode.nvim',
       install_cmd = 'lazy.nvim: { "coder/claudecode.nvim" }'
     })
-    return false, "claudecode.nvim 未找到"
+    return false, "claudecode.nvim not found"
   end
   
   local config = require('claude-fzf.config')
@@ -309,7 +310,7 @@ function M.send_buffer_selections(selections, opts)
       dependency = 'claudecode.nvim',
       install_cmd = 'lazy.nvim: { "coder/claudecode.nvim" }'
     })
-    return false, "claudecode.nvim 未找到"
+    return false, "claudecode.nvim not found"
   end
   
   logger.debug("[BUFFER_SELECTIONS] claudecode.nvim loaded successfully")
@@ -698,19 +699,19 @@ end
 
 function M.check_health()
   if not M.is_available() then
-    return false, 'claudecode.nvim 未安装'
+    return false, 'claudecode.nvim not installed'
   end
   
   local ok, claudecode = pcall(require, 'claudecode')
   if not ok then
-    return false, 'claudecode.nvim 加载失败'
+    return false, 'claudecode.nvim failed to load'
   end
   
   if not claudecode.send_at_mention then
-    return false, 'claudecode.nvim 版本过旧，缺少 send_at_mention 功能'
+    return false, 'claudecode.nvim version too old, missing send_at_mention function'
   end
   
-  return true, 'claudecode.nvim 可用'
+  return true, 'claudecode.nvim available'
 end
 
 return M
