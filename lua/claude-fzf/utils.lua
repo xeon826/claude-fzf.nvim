@@ -308,19 +308,24 @@ function M.is_git_repo()
   return M.get_git_root() ~= nil
 end
 
+-- 使用新的通知服务
+local notify = require('claude-fzf.notify')
+
 function M.notify_error(message, title)
-  title = title or '[claude-fzf]'
-  vim.notify(string.format('%s %s', title, message), vim.log.levels.ERROR)
+  notify.error(message, { title = title })
 end
 
 function M.notify_warn(message, title)
-  title = title or '[claude-fzf]'
-  vim.notify(string.format('%s %s', title, message), vim.log.levels.WARN)
+  notify.warning(message, { title = title })
 end
 
 function M.notify_info(message, title)
-  title = title or '[claude-fzf]'
-  vim.notify(string.format('%s %s', title, message), vim.log.levels.INFO)
+  notify.info(message, { title = title })
+end
+
+-- 新增便捷方法
+function M.notify_success(message, title)
+  notify.success(message, { title = title })
 end
 
 return M

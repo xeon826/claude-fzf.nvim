@@ -1,10 +1,21 @@
 local M = {}
+local notify = require('claude-fzf.notify')
 
 M.defaults = {
   batch_size = 5,
   show_progress = true,
   auto_open_terminal = true,
   auto_context = true,
+  
+  -- 通知配置
+  notifications = {
+    enabled = true,              -- 是否启用通知
+    show_progress = true,        -- 显示进度通知
+    show_success = true,         -- 显示成功通知
+    show_errors = true,          -- 显示错误通知
+    use_snacks = true,           -- 优先使用 snacks.nvim (如果可用)
+    timeout = 3000,              -- 通知超时时间 (毫秒)
+  },
   
   -- 日志配置
   logging = {
@@ -118,13 +129,13 @@ function M.validate_config()
   if M._config.batch_size < 1 then
     logger.warn("[CONFIG] Invalid batch_size: %d, resetting to 1", M._config.batch_size)
     M._config.batch_size = 1
-    vim.notify('[claude-fzf] batch_size 必须大于 0，已重置为 1', vim.log.levels.WARN)
+    notify.warning('batch_size must be greater than 0, reset to 1')
   end
   
   if M._config.claude_opts.context_lines < 0 then
     logger.warn("[CONFIG] Invalid context_lines: %d, resetting to 0", M._config.claude_opts.context_lines)
     M._config.claude_opts.context_lines = 0
-    vim.notify('[claude-fzf] context_lines 必须大于等于 0，已重置为 0', vim.log.levels.WARN)
+    notify.warning('context_lines must be greater than or equal to 0, reset to 0')
   end
   
   logger.debug("[CONFIG] Configuration validation completed successfully")

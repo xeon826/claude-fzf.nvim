@@ -1,10 +1,11 @@
 local M = {}
+local notify = require('claude-fzf.notify')
 
 function M.send_to_claude(selected, opts)
   opts = opts or {}
   
   if not selected or #selected == 0 then
-    vim.notify('[claude-fzf] 未选择项目', vim.log.levels.INFO)
+    notify.info('No items selected')
     return
   end
   
@@ -23,7 +24,7 @@ function M.send_directory(selected, opts)
   opts = opts or {}
   
   if not selected or #selected == 0 then
-    vim.notify('[claude-fzf] 未选择项目', vim.log.levels.INFO)
+    notify.info('No items selected')
     return
   end
   
@@ -31,7 +32,7 @@ function M.send_directory(selected, opts)
   local dirs = utils.filter_directories(selected)
   
   if #dirs == 0 then
-    vim.notify('[claude-fzf] 未选择目录', vim.log.levels.INFO)
+    notify.info('No directories selected')
     return
   end
   
@@ -42,7 +43,7 @@ function M.send_directory(selected, opts)
   end
   
   if #expanded_files == 0 then
-    vim.notify('[claude-fzf] 目录中未找到文件', vim.log.levels.INFO)
+    notify.info('No files found in directories')
     return
   end
   
@@ -54,7 +55,7 @@ function M.send_grep_results(selected, opts)
   opts = opts or {}
   
   if not selected or #selected == 0 then
-    vim.notify('[claude-fzf] 未选择搜索结果', vim.log.levels.INFO)
+    notify.info('No search results selected')
     return
   end
   
@@ -66,7 +67,7 @@ function M.send_buffers(selected, opts)
   opts = opts or {}
   
   if not selected or #selected == 0 then
-    vim.notify('[claude-fzf] 未选择缓冲区', vim.log.levels.INFO)
+    notify.info('No buffers selected')
     return
   end
   
@@ -79,7 +80,7 @@ function M.toggle_all(selected, o)
   if fzf.actions and fzf.actions.toggle_all then
     return fzf.actions.toggle_all(selected, o)
   else
-    vim.notify('[claude-fzf] toggle_all 动作不可用', vim.log.levels.WARN)
+    notify.warning('toggle_all action not available')
   end
 end
 
@@ -97,9 +98,8 @@ function M.preview_claude_context(selected, opts)
   local preview_content = utils.get_file_preview(file, opts.max_lines or 50)
   
   if preview_content then
-    vim.notify(
-      string.format('[claude-fzf] 预览: %s\n%s', file, preview_content),
-      vim.log.levels.INFO
+    notify.info(
+      string.format('Preview: %s\n%s', file, preview_content)
     )
   end
 end
@@ -113,12 +113,9 @@ function M.batch_process_with_progress(items, processor, opts)
   local completed = 0
   local notification
   
+  -- 只在开始时显示进度通知
   if show_progress then
-    notification = vim.notify(
-      string.format("正在发送到 Claude: 0/%d", total),
-      vim.log.levels.INFO,
-      { replace = true }
-    )
+    notify.progress("Processing items...", { id = 'batch_progress' })
   end
   
   local function process_batch(batch_start, batch_end)
@@ -126,14 +123,6 @@ function M.batch_process_with_progress(items, processor, opts)
       local success = processor(items[i])
       if success then
         completed = completed + 1
-      end
-      
-      if show_progress then
-        vim.notify(
-          string.format("正在发送到 Claude: %d/%d", completed, total),
-          vim.log.levels.INFO,
-          { replace = notification }
-        )
       end
     end
   end
@@ -146,10 +135,15 @@ function M.batch_process_with_progress(items, processor, opts)
   
   vim.schedule(function()
     if show_progress then
-      vim.notify(
-        string.format("完成: %d/%d 个文件成功发送到 Claude", completed, total),
-        completed == total and vim.log.levels.INFO or vim.log.levels.WARN
-      )
+      if completed == total then
+        notify.success(
+          string.format("Completed: %d/%d files successfully sent to Claude", completed, total)
+        )
+      else
+        notify.warning(
+          string.format("Completed: %d/%d files successfully sent to Claude", completed, total)
+        )
+      end
     end
     
     if opts.callback then
@@ -168,13 +162,13 @@ function M.create_custom_action(action_fn, opts)
       if opts.allow_empty then
         return action_fn({}, o)
       else
-        vim.notify('[claude-fzf] 未选择项目', vim.log.levels.INFO)
+        notify.info('No items selected')
         return
       end
     end
     
     if opts.single_selection and #selected > 1 then
-      vim.notify('[claude-fzf] 此动作只支持单选', vim.log.levels.WARN)
+      notify.warning('This action only supports single selection')
       return
     end
     

@@ -68,7 +68,7 @@ require('claude-fzf').setup({
   batch_size = 10,
   keymaps = {
     files = "<leader>cf",
-    grep = "<leader>cg", 
+    grep = "<leader>cg",
     buffers = "<leader>cb",
     git_files = "<leader>cgf",
   },
@@ -91,6 +91,7 @@ EOF
 5. Restart Neovim and enjoy the new features!
 
 **Quick Installation Verification:**
+
 ```vim
 :ClaudeFzfHealth  " Check plugin health status
 :ClaudeFzfFiles   " Test file picker
@@ -125,7 +126,17 @@ require('claude-fzf').setup({
   show_progress = true,              -- Show progress indicators
   auto_open_terminal = true,         -- Auto open Claude terminal
   auto_context = true,               -- Enable smart context detection
-  
+
+  -- Notification configuration
+  notifications = {
+    enabled = true,              -- Enable notifications
+    show_progress = true,        -- Show start progress notifications
+    show_success = true,         -- Show completion notifications
+    show_errors = true,          -- Show error notifications
+    use_snacks = true,           -- Prefer snacks.nvim if available
+    timeout = 3000,              -- Notification timeout (ms)
+  },
+
   -- Logging configuration
   logging = {
     level = "INFO",              -- TRACE, DEBUG, INFO, WARN, ERROR
@@ -134,7 +145,7 @@ require('claude-fzf').setup({
     show_caller = true,          -- Show caller location
     timestamp = true,            -- Show timestamps
   },
-  
+
   -- Keymap settings
   keymaps = {
     files = "<leader>cf",            -- File picker
@@ -142,7 +153,7 @@ require('claude-fzf').setup({
     buffers = "<leader>cb",          -- Buffer picker
     git_files = "<leader>cgf",       -- Git files picker
   },
-  
+
   -- fzf-lua configuration
   fzf_opts = {
     preview = {
@@ -156,7 +167,7 @@ require('claude-fzf').setup({
       backdrop = 60,             -- Background transparency
     }
   },
-  
+
   -- Claude integration configuration
   claude_opts = {
     auto_open_terminal = true,       -- Auto open terminal after sending
@@ -170,37 +181,37 @@ require('claude-fzf').setup({
 
 ### Commands
 
-| Command | Description |
-|---------|-------------|
-| `:ClaudeFzfFiles` | Use fzf to select files to send to Claude |
-| `:ClaudeFzfGrep` | Use fzf grep to search and send to Claude |
-| `:ClaudeFzfBuffers` | Use fzf to select buffers to send to Claude |
-| `:ClaudeFzfGitFiles` | Use fzf to select Git files to send to Claude |
-| `:ClaudeFzf [subcommand]` | Generic command supporting subcommands |
-| `:ClaudeFzfHealth` | Check plugin health status |
-| `:ClaudeFzfDebug [option]` | Debug tools and log management |
+| Command                    | Description                                   |
+| -------------------------- | --------------------------------------------- |
+| `:ClaudeFzfFiles`          | Use fzf to select files to send to Claude     |
+| `:ClaudeFzfGrep`           | Use fzf grep to search and send to Claude     |
+| `:ClaudeFzfBuffers`        | Use fzf to select buffers to send to Claude   |
+| `:ClaudeFzfGitFiles`       | Use fzf to select Git files to send to Claude |
+| `:ClaudeFzf [subcommand]`  | Generic command supporting subcommands        |
+| `:ClaudeFzfHealth`         | Check plugin health status                    |
+| `:ClaudeFzfDebug [option]` | Debug tools and log management                |
 
 ### Keyboard Shortcuts (Default)
 
-| Keymap | Function |
-|--------|----------|
-| `<leader>cf` | Open file picker |
-| `<leader>cg` | Open search picker |
-| `<leader>cb` | Open buffer picker |
+| Keymap        | Function              |
+| ------------- | --------------------- |
+| `<leader>cf`  | Open file picker      |
+| `<leader>cg`  | Open search picker    |
+| `<leader>cb`  | Open buffer picker    |
 | `<leader>cgf` | Open Git files picker |
 
 ### fzf Interface Shortcuts
 
 In fzf pickers:
 
-| Shortcut | Function |
-|----------|----------|
-| `Tab` | Multi-select/deselect |
-| `Enter` | Confirm selection and send to Claude |
-| `Ctrl-y` | Send with smart context |
-| `Ctrl-d` | Send directory (files picker only) |
-| `Alt-a` | Select all/deselect all |
-| `Esc` | Cancel and exit |
+| Shortcut | Function                             |
+| -------- | ------------------------------------ |
+| `Tab`    | Multi-select/deselect                |
+| `Enter`  | Confirm selection and send to Claude |
+| `Ctrl-y` | Send with smart context              |
+| `Ctrl-d` | Send directory (files picker only)   |
+| `Alt-a`  | Select all/deselect all              |
+| `Esc`    | Cancel and exit                      |
 
 ## 📚 API Reference
 
@@ -213,7 +224,7 @@ require('claude-fzf').setup(opts)
 -- File picker
 require('claude-fzf').files(opts)
 
--- Search picker  
+-- Search picker
 require('claude-fzf').grep_add(opts)
 
 -- Buffer picker
@@ -248,6 +259,7 @@ Run health check to ensure plugin is properly configured:
 ```
 
 Health check will verify:
+
 - Neovim version compatibility
 - Required dependencies installation
 - Configuration validity
@@ -267,6 +279,37 @@ claude_fzf.files({
   fzf_opts = {
     ['--header'] = 'Select config files to add to Claude'
   }
+})
+```
+
+### Notification Customization
+
+```lua
+-- Disable all notifications
+require('claude-fzf').setup({
+  notifications = {
+    enabled = false,
+  },
+})
+
+-- Only show errors, disable success and progress
+require('claude-fzf').setup({
+  notifications = {
+    enabled = true,
+    show_progress = false,
+    show_success = false,
+    show_errors = true,
+    use_snacks = true,
+  },
+})
+
+-- Use snacks.nvim with custom timeout
+require('claude-fzf').setup({
+  notifications = {
+    enabled = true,
+    use_snacks = true,
+    timeout = 5000,  -- 5 seconds
+  },
 })
 ```
 
@@ -301,18 +344,21 @@ A: Customize keymaps in configuration or set to empty string to disable
 Plugin includes complete logging system for debugging issues:
 
 **Enable debug logging:**
+
 ```vim
 :ClaudeFzfDebug on        " Enable debug logging
 :ClaudeFzfDebug trace     " Enable detailed trace logging
 ```
 
 **View logs:**
+
 ```vim
 :ClaudeFzfDebug log       " Open log file
 :ClaudeFzfDebug stats     " Show log statistics
 ```
 
 **Configure logging options:**
+
 ```lua
 require('claude-fzf').setup({
   logging = {
@@ -326,10 +372,12 @@ require('claude-fzf').setup({
 ```
 
 **Log file location:**
+
 - Default path: `~/.local/state/nvim/log/claude-fzf.log`
 - Use `:ClaudeFzfDebug log` to directly open log file
 
 **Common debug commands:**
+
 ```vim
 :ClaudeFzfDebug           " Show help information
 :ClaudeFzfDebug on        " Enable debugging
@@ -355,3 +403,4 @@ MIT License. See [LICENSE](LICENSE) file for details.
 ---
 
 **Creating a better Claude Code development experience** 🚀
+

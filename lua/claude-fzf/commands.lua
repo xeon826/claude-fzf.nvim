@@ -1,4 +1,5 @@
 local M = {}
+local notify = require('claude-fzf.notify')
 
 local function parse_args(args)
   if not args or args == "" then
@@ -9,7 +10,7 @@ local function parse_args(args)
   if ok then
     return result
   else
-    vim.notify('[claude-fzf] 参数解析失败，使用默认配置', vim.log.levels.WARN)
+    notify.warning('Parameter parsing failed, using default configuration')
     return {}
   end
 end
@@ -54,8 +55,8 @@ function M.setup()
     elseif args == "git" then
       require('claude-fzf.integrations.fzf').git_files()
     else
-      vim.notify('[claude-fzf] 未知子命令: ' .. args, vim.log.levels.ERROR)
-      vim.notify('[claude-fzf] 可用子命令: files, grep, buffers, git', vim.log.levels.INFO)
+      notify.error('Unknown subcommand: ' .. args)
+      notify.info('Available subcommands: files, grep, buffers, git')
     end
   end, { 
     desc = 'Claude FZF - 多功能选择器',
@@ -138,15 +139,15 @@ function M.setup()
         end
       end
     else
-      vim.notify([[[claude-fzf] 调试命令:
-  :ClaudeFzfDebug on/enable  - 启用调试日志
-  :ClaudeFzfDebug off/disable - 禁用调试日志  
-  :ClaudeFzfDebug trace      - 启用跟踪日志
-  :ClaudeFzfDebug stats      - 显示日志统计
-  :ClaudeFzfDebug clear      - 清空日志文件
-  :ClaudeFzfDebug log        - 打开日志文件
-  :ClaudeFzfDebug reload     - 重新加载所有模块
-  :ClaudeFzfDebug test       - 测试路径解析]], vim.log.levels.INFO)
+      notify.info([[Debug commands:
+  :ClaudeFzfDebug on/enable  - Enable debug logging
+  :ClaudeFzfDebug off/disable - Disable debug logging  
+  :ClaudeFzfDebug trace      - Enable trace logging
+  :ClaudeFzfDebug stats      - Show log statistics
+  :ClaudeFzfDebug clear      - Clear log file
+  :ClaudeFzfDebug log        - Open log file
+  :ClaudeFzfDebug reload     - Reload all modules
+  :ClaudeFzfDebug test       - Test path parsing]])
     end
   end, {
     desc = 'Claude FZF 调试工具',

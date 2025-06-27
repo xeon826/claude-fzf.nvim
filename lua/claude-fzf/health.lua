@@ -67,6 +67,28 @@ function M.check_configuration()
       health.info("  缓冲区: " .. (keymaps.buffers or "未设置"))
       health.info("  Git 文件: " .. (keymaps.git_files or "未设置"))
     end
+    
+    -- 检查通知配置
+    if current_config.notifications then
+      local notif = current_config.notifications
+      health.info("通知配置:")
+      health.info("  启用: " .. (notif.enabled and "是" or "否"))
+      health.info("  显示进度: " .. (notif.show_progress and "是" or "否"))
+      health.info("  显示成功: " .. (notif.show_success and "是" or "否"))
+      health.info("  显示错误: " .. (notif.show_errors and "是" or "否"))
+      health.info("  使用 snacks.nvim: " .. (notif.use_snacks and "是" or "否"))
+      health.info("  超时时间: " .. (notif.timeout or "默认") .. " ms")
+      
+      -- 检查 snacks.nvim 可用性
+      if notif.use_snacks then
+        local snacks_ok, snacks = pcall(require, 'snacks')
+        if snacks_ok and snacks.notify then
+          health.ok("snacks.nvim 通知系统可用")
+        else
+          health.warn("snacks.nvim 不可用，将使用原生 vim.notify")
+        end
+      end
+    end
   else
     health.error("配置未加载，请运行 require('claude-fzf').setup()")
   end

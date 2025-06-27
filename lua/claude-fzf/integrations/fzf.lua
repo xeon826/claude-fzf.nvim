@@ -1,4 +1,5 @@
 local M = {}
+local notify = require('claude-fzf.notify')
 local logger = require('claude-fzf.logger')
 
 local fzf_lua = nil
@@ -28,7 +29,7 @@ function M.create_claude_action(action_type, opts)
     
     if not selected or #selected == 0 then
       logger.debug("[CLAUDE_ACTION] No items selected, aborting")
-      vim.notify('[claude-fzf] 未选择项目', vim.log.levels.INFO)
+      notify.info('No items selected')
       return
     end
     
@@ -59,7 +60,7 @@ function M.create_claude_action(action_type, opts)
       result = claudecode.send_buffer_selections(selected, opts)
     else
       logger.error("[CLAUDE_ACTION] Unknown action type: %s", action_type)
-      vim.notify('[claude-fzf] 未知动作类型: ' .. action_type, vim.log.levels.ERROR)
+      notify.error('Unknown action type: ' .. action_type)
       return false
     end
     
@@ -98,7 +99,7 @@ function M.files(opts)
             M.create_claude_action('files')(dirs)
           else
             logger.warn("No directories selected")
-            vim.notify('[claude-fzf] 未选择目录', vim.log.levels.INFO)
+            notify.info('No directories selected')
           end
         end,
         ['alt-a'] = function(selected, o)

@@ -41,8 +41,9 @@ function M.send_selections(selections, opts)
     if file_info then
       logger.debug("Parsed file info: %s", vim.inspect(file_info))
       
-      if config.should_show_progress() then
-        M.show_progress(i, total, "发送到 Claude")
+      -- 只在开始时显示进度通知
+      if config.should_show_progress() and i == 1 then
+        notify.progress("Sending to Claude...", { id = 'claude_send_progress' })
       end
       
       local success, err
@@ -86,11 +87,10 @@ function M.send_selections(selections, opts)
         success_count = success_count + 1
         logger.debug("Successfully sent: %s", file_info.path)
       else
-        logger.error("Failed to send %s: %s", file_info.path, err or "未知错误")
-        vim.notify(
-          string.format('[claude-fzf] 发送失败: %s - %s', 
-            file_info.path, err or "未知错误"),
-          vim.log.levels.WARN
+        logger.error("Failed to send %s: %s", file_info.path, err or "unknown error")
+        notify.error(
+          string.format('Send failed: %s - %s', 
+            file_info.path, err or "unknown error")
         )
       end
     else
@@ -101,7 +101,7 @@ function M.send_selections(selections, opts)
     end
   end
   
-  M.show_final_result(success_count, total, "文件")
+  M.show_final_result(success_count, total, "files")
   
   if config.should_auto_open_terminal() and success_count > 0 then
     M.auto_open_terminal()
@@ -261,8 +261,9 @@ function M.send_grep_results(selections, opts)
   total = #file_selections
   
   for i, selection in ipairs(file_selections) do
-    if config.should_show_progress() then
-      M.show_progress(i, total, "发送搜索结果到 Claude")
+    -- 只在开始时显示进度通知
+    if config.should_show_progress() and i == 1 then
+      notify.progress("Sending search results to Claude...", { id = 'claude_grep_progress' })
     end
     
     local context_lines = claude_opts.context_lines or 5
@@ -279,15 +280,14 @@ function M.send_grep_results(selections, opts)
     if success then
       success_count = success_count + 1
     else
-      vim.notify(
-        string.format('[claude-fzf] 发送失败: %s:%d - %s', 
-          selection.file, selection.line, err or "未知错误"),
-        vim.log.levels.WARN
+      notify.error(
+        string.format('Send failed: %s:%d - %s', 
+          selection.file, selection.line, err or "unknown error")
       )
     end
   end
   
-  M.show_final_result(success_count, total, "搜索结果")
+  M.show_final_result(success_count, total, "search results")
   
   if config.should_auto_open_terminal() and success_count > 0 then
     M.auto_open_terminal()
@@ -336,8 +336,9 @@ function M.send_buffer_selections(selections, opts)
         logger.debug("[BUFFER_SELECTIONS] File exists: '%s'", file_path)
       end
       
-      if config.should_show_progress() then
-        M.show_progress(i, total, "发送缓冲区到 Claude")
+      -- 只在开始时显示进度通知
+      if config.should_show_progress() and i == 1 then
+        notify.progress("Sending buffers to Claude...", { id = 'claude_buffer_progress' })
       end
       
       local success, err = logger.safe_call(
@@ -353,11 +354,10 @@ function M.send_buffer_selections(selections, opts)
         success_count = success_count + 1
         logger.debug("[BUFFER_SELECTIONS] Successfully sent: %s", file_path)
       else
-        logger.error("[BUFFER_SELECTIONS] Failed to send %s: %s", file_path, err or "未知错误")
-        vim.notify(
-          string.format('[claude-fzf] 发送失败: %s - %s', 
-            file_path, err or "未知错误"),
-          vim.log.levels.WARN
+        logger.error("[BUFFER_SELECTIONS] Failed to send %s: %s", file_path, err or "unknown error")
+        notify.error(
+          string.format('Send failed: %s - %s', 
+            file_path, err or "unknown error")
         )
       end
     else
@@ -367,7 +367,7 @@ function M.send_buffer_selections(selections, opts)
   end
   
   logger.debug("[BUFFER_SELECTIONS] Completed: %d/%d successful", success_count, total)
-  M.show_final_result(success_count, total, "缓冲区")
+  M.show_final_result(success_count, total, "buffers")
   
   if config.should_auto_open_terminal() and success_count > 0 then
     logger.debug("[BUFFER_SELECTIONS] Auto-opening terminal")
@@ -637,20 +637,15 @@ function M.parse_buffer_selection(selection)
   end
 end
 
+-- 使用新的通知服务
+local notify = require('claude-fzf.notify')
+
 function M.show_progress(current, total, message)
-  vim.notify(
-    string.format('%s: %d/%d', message, current, total),
-    vim.log.levels.INFO,
-    { replace = current > 1 }
-  )
+  notify.show_progress(current, total, message, 'claude_fzf_progress')
 end
 
 function M.show_final_result(success_count, total, item_type)
-  local level = success_count == total and vim.log.levels.INFO or vim.log.levels.WARN
-  vim.notify(
-    string.format('完成: %d/%d 个%s成功发送到 Claude', success_count, total, item_type),
-    level
-  )
+  notify.show_final_result(success_count, total, item_type)
 end
 
 function M.auto_open_terminal()
@@ -663,28 +658,25 @@ end
 function M.handle_error(error_type, context)
   local handlers = {
     [ErrorTypes.DEPENDENCY_MISSING] = function(ctx)
-      vim.notify(
-        string.format('[claude-fzf] 缺少依赖: %s\n请安装: %s', 
-          ctx.dependency, ctx.install_cmd),
-        vim.log.levels.ERROR
+      notify.error(
+        string.format('Missing dependency: %s\nPlease install: %s', 
+          ctx.dependency, ctx.install_cmd)
       )
     end,
     
     [ErrorTypes.CONNECTION_FAILED] = function(ctx)
-      vim.notify('[claude-fzf] Claude 连接失败，正在重试...', vim.log.levels.WARN)
+      notify.warning('Claude connection failed, retrying...')
     end,
     
     [ErrorTypes.INVALID_SELECTION] = function(ctx)
-      vim.notify(
-        string.format('[claude-fzf] 无效选择: %s', ctx.selection),
-        vim.log.levels.WARN
+      notify.warning(
+        string.format('Invalid selection: %s', ctx.selection)
       )
     end,
     
     [ErrorTypes.FILE_NOT_FOUND] = function(ctx)
-      vim.notify(
-        string.format('[claude-fzf] 文件未找到: %s', ctx.file_path),
-        vim.log.levels.ERROR
+      notify.error(
+        string.format('File not found: %s', ctx.file_path)
       )
     end,
   }
@@ -693,9 +685,8 @@ function M.handle_error(error_type, context)
   if handler then 
     handler(context) 
   else
-    vim.notify(
-      string.format('[claude-fzf] 未知错误类型: %s', error_type),
-      vim.log.levels.ERROR
+    notify.error(
+      string.format('Unknown error type: %s', error_type)
     )
   end
 end
