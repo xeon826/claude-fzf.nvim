@@ -32,7 +32,8 @@ function M.send_selections(selections, opts)
   local config = require('claude-fzf.config')
   local claude_opts = config.get_claude_opts()
   
-  local success_count = 0
+  -- Prepare clean file paths for claudecode.nvim batch sending
+  local clean_paths = {}
   local total = #selections
   
   for i, selection in ipairs(selections) do
@@ -41,61 +42,66 @@ function M.send_selections(selections, opts)
     local file_info = M.parse_selection(selection)
     if file_info then
       logger.debug("Parsed file info: %s", vim.inspect(file_info))
-      
-      -- Progress notifications disabled - only show completion notification
-      
-      local success, err
-      if opts.with_context and config.has_auto_context() then
-        logger.debug("Extracting context for %s", file_info.path)
-        local context = M.extract_context(file_info.path, file_info.start_line)
-        if context then
-          logger.debug("Context extracted: %s", vim.inspect(context))
-          success, err = logger.safe_call(
-            claudecode.send_at_mention,
-            string.format("send_at_mention(%s:%d-%d)", file_info.path, context.start_line, context.end_line),
-            file_info.path, 
-            context.start_line, 
-            context.end_line,
-            claude_opts.source_tag or "claude-fzf-integration"
-          )
-        else
-          logger.debug("No context extracted, sending whole file")
-          success, err = logger.safe_call(
-            claudecode.send_at_mention,
-            string.format("send_at_mention(%s)", file_info.path),
-            file_info.path, 
-            file_info.start_line, 
-            file_info.end_line,
-            claude_opts.source_tag or "claude-fzf-integration"
-          )
-        end
-      else
-        logger.debug("Sending without context: %s", file_info.path)
-        success, err = logger.safe_call(
-          claudecode.send_at_mention,
-          string.format("send_at_mention(%s)", file_info.path),
-          file_info.path, 
-          file_info.start_line, 
-          file_info.end_line,
-          claude_opts.source_tag or "claude-fzf-integration"
-        )
-      end
-      
-      if success then
-        success_count = success_count + 1
-        logger.debug("Successfully sent: %s", file_info.path)
-      else
-        logger.error("Failed to send %s: %s", file_info.path, err or "unknown error")
-        notify.error(
-          string.format('Send failed: %s - %s', 
-            file_info.path, err or "unknown error")
-        )
-      end
+      table.insert(clean_paths, file_info.path)
     else
       logger.warn("[SEND_SELECTIONS] Invalid selection: '%s' (trimmed: '%s')", selection, vim.trim(selection))
       logger.debug("[SEND_SELECTIONS] Selection bytes: [%s]", 
         table.concat({string.byte(selection, 1, #selection)}, ", "))
       M.handle_error(ErrorTypes.INVALID_SELECTION, { selection = selection })
+    end
+  end
+  
+  local success_count = 0
+  if #clean_paths > 0 then
+    logger.debug("Using claudecode.nvim send_at_mention for %d files", #clean_paths)
+    
+    -- Check for duplicate paths before sending
+    local unique_paths = {}
+    local seen_paths = {}
+    local duplicate_count = 0
+    
+    for _, file_path in ipairs(clean_paths) do
+      -- Convert to absolute path for comparison
+      local abs_path = vim.fn.fnamemodify(file_path, ':p')
+      if not seen_paths[abs_path] then
+        seen_paths[abs_path] = true
+        table.insert(unique_paths, file_path)
+        logger.debug("Added unique path: %s -> %s", file_path, abs_path)
+      else
+        duplicate_count = duplicate_count + 1
+        logger.warn("Duplicate path detected: %s -> %s", file_path, abs_path)
+      end
+    end
+    
+    if duplicate_count > 0 then
+      logger.warn("Found %d duplicate paths, sending %d unique files", duplicate_count, #unique_paths)
+    end
+    
+    -- Send each file individually using send_at_mention
+    for i, file_path in ipairs(unique_paths) do
+      logger.debug("Sending file %d/%d: %s", i, #unique_paths, file_path)
+      
+      local success, err = logger.safe_call(
+        claudecode.send_at_mention,
+        string.format("send_at_mention(%s)", file_path),
+        file_path,
+        nil,
+        nil,
+        claude_opts.source_tag or "claude-fzf-integration"
+      )
+      
+      if success then
+        success_count = success_count + 1
+        logger.debug("Successfully sent: %s", file_path)
+        
+        -- Add delay to prevent Claude Code CLI from dropping files in rapid succession
+        vim.wait(100)
+      else
+        logger.error("Failed to send %s: %s", file_path, err or "unknown error")
+        notify.error(
+          string.format('Send failed: %s - %s', file_path, err or "unknown error")
+        )
+      end
     end
   end
   
