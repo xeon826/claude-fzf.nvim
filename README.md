@@ -6,6 +6,8 @@ claude-fzf.nvim is a professional Neovim plugin that perfectly integrates the po
 
 [中文文档](README-zh.md) | [English Documentation](README.md)
 
+[![asciicast](https://asciinema.org/a/NE02zDNQtIEuJMkMD5lPDmXN5.svg)](https://asciinema.org/a/NE02zDNQtIEuJMkMD5lPDmXN5)
+
 ## ✨ Features
 
 - 🚀 **Batch File Selection**: Use fzf-lua's multi-select functionality to batch add files to Claude context
