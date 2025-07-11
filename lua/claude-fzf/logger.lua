@@ -1,6 +1,6 @@
 local M = {}
 
--- 日志级别
+-- Log levels
 M.levels = {
   TRACE = 0,
   DEBUG = 1,
@@ -9,7 +9,7 @@ M.levels = {
   ERROR = 4,
 }
 
--- 日志级别名称
+-- Log level names
 M.level_names = {
   [0] = "TRACE",
   [1] = "DEBUG", 
@@ -18,7 +18,7 @@ M.level_names = {
   [4] = "ERROR",
 }
 
--- 默认配置
+-- Default configuration
 M._config = {
   level = M.levels.INFO,
   file_logging = false,
@@ -32,7 +32,7 @@ M._config = {
 function M.setup(opts)
   M._config = vim.tbl_deep_extend('force', M._config, opts or {})
   
-  -- 确保日志目录存在
+  -- Ensure log directory exists
   if M._config.file_logging then
     local log_dir = vim.fn.fnamemodify(M._config.log_file, ':h')
     vim.fn.mkdir(log_dir, 'p')
@@ -75,7 +75,7 @@ function M.log_to_file(message)
     return
   end
   
-  -- 检查文件大小，如果太大则轮转
+  -- Check file size, rotate if too large
   local stat = vim.loop.fs_stat(M._config.log_file)
   if stat and stat.size > M._config.max_file_size then
     local backup_file = M._config.log_file .. ".old"
@@ -117,7 +117,7 @@ function M.write_log(level, msg, ...)
   M.log_to_console(level, message)
 end
 
--- 便捷的日志函数
+-- Convenient log functions
 function M.trace(msg, ...)
   M.write_log(M.levels.TRACE, msg, ...)
 end
@@ -138,7 +138,7 @@ function M.error(msg, ...)
   M.write_log(M.levels.ERROR, msg, ...)
 end
 
--- 包装函数调用以捕获错误
+-- Wrap function calls to capture errors
 function M.safe_call(func, context, ...)
   local ok, result = pcall(func, ...)
   if not ok then
@@ -149,12 +149,12 @@ function M.safe_call(func, context, ...)
   return true, result
 end
 
--- 性能计时
+-- Performance timing
 function M.time_call(func, context, ...)
   local start_time = vim.loop.hrtime()
   local ok, result = M.safe_call(func, context, ...)
   local end_time = vim.loop.hrtime()
-  local duration = (end_time - start_time) / 1e6 -- 转换为毫秒
+  local duration = (end_time - start_time) / 1e6 -- Convert to milliseconds
   
   if ok then
     M.debug("%s completed in %.2f ms", context, duration)
@@ -165,19 +165,19 @@ function M.time_call(func, context, ...)
   return ok, result
 end
 
--- 设置日志级别
+-- Set log level
 function M.set_level(level)
   M._config.level = level
   M.info("Log level set to %s", M.level_names[level])
 end
 
--- 启用/禁用文件日志
+-- Enable/disable file logging
 function M.set_file_logging(enabled)
   M._config.file_logging = enabled
   M.info("File logging %s", enabled and "enabled" or "disabled")
 end
 
--- 启用/禁用控制台日志
+-- Enable/disable console logging
 function M.set_console_logging(enabled)
   M._config.console_logging = enabled
   if enabled then
@@ -185,7 +185,7 @@ function M.set_console_logging(enabled)
   end
 end
 
--- 清理日志文件
+-- Clear log file
 function M.clear_log_file()
   if M._config.file_logging then
     local file = io.open(M._config.log_file, "w")
@@ -196,12 +196,12 @@ function M.clear_log_file()
   end
 end
 
--- 获取日志文件路径
+-- Get log file path
 function M.get_log_file()
   return M._config.log_file
 end
 
--- 显示日志统计
+-- Show log statistics
 function M.show_stats()
   local stat = vim.loop.fs_stat(M._config.log_file)
   if stat then

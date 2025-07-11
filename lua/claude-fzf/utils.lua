@@ -308,7 +308,7 @@ function M.is_git_repo()
   return M.get_git_root() ~= nil
 end
 
--- 使用新的通知服务
+-- Use new notification service
 local notify = require('claude-fzf.notify')
 
 function M.notify_error(message, title)
@@ -323,7 +323,7 @@ function M.notify_info(message, title)
   notify.info(message, { title = title })
 end
 
--- 新增便捷方法
+-- Add convenience methods
 function M.notify_success(message, title)
   notify.success(message, { title = title })
 end

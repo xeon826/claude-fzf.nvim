@@ -533,25 +533,25 @@ function M.parse_selection(selection, opts)
     return nil
   end
 
-  -- 尝试多种路径解析策略
+  -- Try multiple path resolution strategies
   local paths_to_try = {}
 
-  -- 1. 直接使用解析后的路径
+  -- 1. Use parsed path directly
   table.insert(paths_to_try, line_info.path)
   
-  -- 2. 展开路径（处理 ~ 等）
+  -- 2. Expand path (handle ~ etc.)
   local expanded_path = vim.fn.expand(line_info.path)
   if expanded_path ~= line_info.path then
     table.insert(paths_to_try, expanded_path)
   end
   
-  -- 3. 如果是相对路径，尝试基于当前工作目录
+  -- 3. If relative path, try based on current working directory
   if not vim.startswith(line_info.path, '/') then
     local cwd = vim.loop.cwd()
     table.insert(paths_to_try, cwd .. '/' .. line_info.path)
   end
   
-  -- 4. 如果是相对路径，尝试基于 HOME 目录
+  -- 4. If relative path, try based on HOME directory
   if not vim.startswith(line_info.path, '/') then
     local home = vim.env.HOME or os.getenv('HOME')
     if home then
@@ -559,13 +559,13 @@ function M.parse_selection(selection, opts)
     end
   end
   
-  -- 5. 尝试使用 vim.fn.findfile
+  -- 5. Try using vim.fn.findfile
   local found_file = vim.fn.findfile(line_info.path, '.;')
   if found_file ~= "" then
     table.insert(paths_to_try, vim.fn.fnamemodify(found_file, ':p'))
   end
   
-  -- 尝试每个路径
+  -- Try each path
   for i, path in ipairs(paths_to_try) do
     logger.debug("[PARSE_SELECTION] Trying path %d: '%s' (length: %d)", i, path, #path)
     
@@ -635,7 +635,7 @@ function M.parse_buffer_selection(selection)
   end
 end
 
--- 使用新的通知服务
+-- Use new notification service
 local notify = require('claude-fzf.notify')
 
 function M.show_progress(current, total, message)

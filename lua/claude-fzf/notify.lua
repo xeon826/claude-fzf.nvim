@@ -1,7 +1,7 @@
---- 通知服务模块 - 支持 snacks.nvim 集成和可配置通知
+--- Notification service module - Supports snacks.nvim integration and configurable notifications
 local M = {}
 
--- 通知类型
+-- Notification types
 M.types = {
   SUCCESS = 'success',
   ERROR = 'error',
@@ -10,19 +10,19 @@ M.types = {
   PROGRESS = 'progress'
 }
 
--- 获取配置
+-- Get configuration
 local function get_config()
   local config = require('claude-fzf.config').get()
   return config.notifications or {}
 end
 
--- 检查 snacks.nvim 可用性
+-- Check snacks.nvim availability
 local function has_snacks()
   local ok, snacks = pcall(require, 'snacks')
   return ok and snacks.notify ~= nil
 end
 
--- 获取通知级别
+-- Get notification level
 local function get_vim_level(type)
   local levels = {
     [M.types.ERROR] = vim.log.levels.ERROR,
@@ -34,7 +34,7 @@ local function get_vim_level(type)
   return levels[type] or vim.log.levels.INFO
 end
 
--- 格式化消息
+-- Format message
 local function format_message(message, title)
   if title then
     return string.format('%s %s', title, message)
@@ -42,7 +42,7 @@ local function format_message(message, title)
   return message
 end
 
--- 使用 snacks.nvim 发送通知
+-- Send notification using snacks.nvim
 local function notify_with_snacks(message, type, opts)
   local snacks = require('snacks')
   local snacks_opts = {
@@ -51,7 +51,7 @@ local function notify_with_snacks(message, type, opts)
     id = opts.id,
   }
   
-  -- 根据类型选择相应的 snacks 方法
+  -- Select appropriate snacks method based on type
   if type == M.types.ERROR then
     snacks.notify.error(message, snacks_opts)
   elseif type == M.types.WARNING then
@@ -63,7 +63,7 @@ local function notify_with_snacks(message, type, opts)
   end
 end
 
--- 使用原生 vim.notify 发送通知
+-- Send notification using native vim.notify
 local function notify_with_vim(message, type, opts)
   local formatted_msg = format_message(message, opts.title)
   local vim_level = get_vim_level(type)
@@ -76,17 +76,17 @@ local function notify_with_vim(message, type, opts)
   vim.notify(formatted_msg, vim_level, vim_opts)
 end
 
--- 核心通知函数
+-- Core notification function
 function M.notify(message, type, opts)
   opts = opts or {}
   local config = get_config()
   
-  -- 检查是否启用通知
+  -- Check if notifications are enabled
   if not config.enabled then
     return
   end
   
-  -- 根据类型检查是否应该显示
+  -- Check if notification should be shown based on type
   if type == M.types.PROGRESS and not config.show_progress then
     return
   elseif type == M.types.SUCCESS and not config.show_success then
@@ -95,11 +95,11 @@ function M.notify(message, type, opts)
     return
   end
   
-  -- 设置默认选项
+  -- Set default options
   opts.title = opts.title or '[claude-fzf]'
   opts.timeout = opts.timeout or config.timeout or 3000
   
-  -- 选择通知后端
+  -- Select notification backend
   if config.use_snacks and has_snacks() then
     notify_with_snacks(message, type, opts)
   else
@@ -107,7 +107,7 @@ function M.notify(message, type, opts)
   end
 end
 
--- 便捷方法
+-- Convenience methods
 function M.success(message, opts)
   M.notify(message, M.types.SUCCESS, opts)
 end
@@ -128,7 +128,7 @@ function M.progress(message, opts)
   M.notify(message, M.types.PROGRESS, opts)
 end
 
--- 进度通知（带替换功能）
+-- Progress notification (with replacement functionality)
 function M.show_progress(current, total, message, id)
   local progress_msg = string.format('%s: %d/%d', message, current, total) 
   M.progress(progress_msg, {
@@ -137,7 +137,7 @@ function M.show_progress(current, total, message, id)
   })
 end
 
--- 最终结果通知
+-- Final result notification
 function M.show_final_result(success_count, total, item_type, opts)
   opts = opts or {}
   local message = string.format('Completed: %d/%d %s successfully sent to Claude', success_count, total, item_type)
@@ -149,7 +149,7 @@ function M.show_final_result(success_count, total, item_type, opts)
   end
 end
 
--- 检查通知系统状态
+-- Check notification system status
 function M.check_status()
   local config = get_config()
   local status = {

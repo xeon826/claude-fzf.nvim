@@ -19,28 +19,28 @@ function M.setup()
   vim.api.nvim_create_user_command('ClaudeFzfFiles', function(opts)
     require('claude-fzf.integrations.fzf').files(parse_args(opts.args))
   end, { 
-    desc = '使用 fzf 选择文件发送到 Claude',
+    desc = 'Select files with fzf and send to Claude',
     nargs = '?'
   })
   
   vim.api.nvim_create_user_command('ClaudeFzfGrep', function(opts)
     require('claude-fzf.integrations.fzf').live_grep(parse_args(opts.args))
   end, { 
-    desc = '使用 fzf grep 搜索并发送到 Claude',
+    desc = 'Search with fzf grep and send to Claude',
     nargs = '?'
   })
   
   vim.api.nvim_create_user_command('ClaudeFzfBuffers', function(opts)
     require('claude-fzf.integrations.fzf').buffers(parse_args(opts.args))
   end, { 
-    desc = '使用 fzf 选择缓冲区发送到 Claude',
+    desc = 'Select buffers with fzf and send to Claude',
     nargs = '?'
   })
   
   vim.api.nvim_create_user_command('ClaudeFzfGitFiles', function(opts)
     require('claude-fzf.integrations.fzf').git_files(parse_args(opts.args))
   end, { 
-    desc = '使用 fzf 选择 Git 文件发送到 Claude',
+    desc = 'Select Git files with fzf and send to Claude',
     nargs = '?'
   })
   
@@ -59,7 +59,7 @@ function M.setup()
       notify.info('Available subcommands: files, grep, buffers, git')
     end
   end, { 
-    desc = 'Claude FZF - 多功能选择器',
+    desc = 'Claude FZF - Multi-functional selector',
     nargs = '?',
     complete = function()
       return {'files', 'grep', 'buffers', 'git'}
@@ -85,7 +85,7 @@ function M.setup()
     vim.keymap.set('n', keymaps.git_files, '<cmd>ClaudeFzfGitFiles<cr>', { desc = 'Claude: Add Git Files' })
   end
   
-  -- 调试命令
+  -- Debug commands
   vim.api.nvim_create_user_command('ClaudeFzfDebug', function(opts)
     local logger = require('claude-fzf.logger')
     local args = opts.args or ""
@@ -107,7 +107,7 @@ function M.setup()
       local log_file = logger.get_log_file()
       vim.cmd('edit ' .. log_file)
     elseif args == "reload" then
-      -- 强制重新加载所有模块
+      -- Force reload all modules
       for k,v in pairs(package.loaded) do
         if k:match('^claude%-fzf') then
           package.loaded[k] = nil
@@ -115,7 +115,7 @@ function M.setup()
         end
       end
       
-      -- 重新设置插件
+      -- Reinitialize plugin
       require('claude-fzf').setup({
         logging = {
           level = 'DEBUG',
@@ -126,7 +126,7 @@ function M.setup()
       
       logger.info("All modules reloaded successfully")
     elseif args == "test" then
-      -- 测试路径解析
+      -- Test path parsing
       local claudecode = require('claude-fzf.integrations.claudecode')
       local test_files = {' CLAUDE.md', ' Cargo.lock', ' README.md'}
       
@@ -150,7 +150,7 @@ function M.setup()
   :ClaudeFzfDebug test       - Test path parsing]])
     end
   end, {
-    desc = 'Claude FZF 调试工具',
+    desc = 'Claude FZF debug tools',
     nargs = '?',
     complete = function()
       return {'on', 'off', 'enable', 'disable', 'trace', 'stats', 'clear', 'log', 'reload', 'test'}

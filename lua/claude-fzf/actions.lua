@@ -174,7 +174,7 @@ function M.create_custom_action(action_fn, opts)
 end
 
 function M.with_confirmation(action_fn, message)
-  message = message or "确认执行此操作？"
+  message = message or "Confirm this action?"
   
   return function(selected, o)
     local choice = vim.fn.confirm(message, "&Yes\n&No", 2)
