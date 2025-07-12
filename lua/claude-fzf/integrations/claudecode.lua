@@ -426,6 +426,81 @@ function M.parse_selection(selection, opts)
   end
   logger.debug("[PARSE_SELECTION] Raw bytes: [%s]", table.concat(byte_repr, ", "))
   
+  -- First, remove Git status characters (?, M, A, D, R, C, U, !) from the beginning
+  local function remove_git_status_prefix(str)
+    -- Common Git status prefixes: ? (untracked), M (modified), A (added), D (deleted), 
+    -- R (renamed), C (copied), U (unmerged), ! (ignored)
+    -- Match Git status character followed by any whitespace (including Unicode spaces)
+    local cleaned = str
+    
+    -- First try to match Git status character followed by Unicode or regular spaces
+    local git_pattern = "^([?MADRCUI!])(.*)$"
+    local git_char, rest = str:match(git_pattern)
+    
+    if git_char and rest then
+      -- Remove leading whitespace using the same safe method as Unicode cleanup
+      local i = 1
+      while i <= #rest do
+        local byte1 = string.byte(rest, i)
+        local char_len = 1
+        local codepoint = nil
+        
+        -- Determine UTF-8 character length and decode codepoint
+        if byte1 < 128 then
+          codepoint = byte1
+          char_len = 1
+        elseif byte1 >= 194 and byte1 <= 223 then
+          if i + 1 <= #rest then
+            local byte2 = string.byte(rest, i + 1)
+            codepoint = ((byte1 - 192) * 64) + (byte2 - 128)
+            char_len = 2
+          end
+        elseif byte1 >= 224 and byte1 <= 239 then
+          if i + 2 <= #rest then
+            local byte2 = string.byte(rest, i + 1)
+            local byte3 = string.byte(rest, i + 2)
+            codepoint = ((byte1 - 224) * 4096) + ((byte2 - 128) * 64) + (byte3 - 128)
+            char_len = 3
+          end
+        elseif byte1 >= 240 and byte1 <= 244 then
+          if i + 3 <= #rest then
+            local byte2 = string.byte(rest, i + 1)
+            local byte3 = string.byte(rest, i + 2)
+            local byte4 = string.byte(rest, i + 3)
+            codepoint = ((byte1 - 240) * 262144) + ((byte2 - 128) * 4096) + ((byte3 - 128) * 64) + (byte4 - 128)
+            char_len = 4
+          end
+        end
+        
+        -- Check if this is a space/whitespace character to skip
+        local is_space = false
+        if codepoint then
+          -- Regular whitespace characters
+          if codepoint == 32 or codepoint == 9 or codepoint == 10 or codepoint == 13 then
+            is_space = true
+          -- Unicode space characters
+          elseif codepoint >= 0x2000 and codepoint <= 0x200F then
+            is_space = true
+          end
+        end
+        
+        if not is_space then
+          -- Found non-space character, take the rest of the string
+          cleaned = string.sub(rest, i)
+          break
+        end
+        
+        i = i + char_len
+      end
+      
+      if cleaned ~= str then
+        logger.debug("[PARSE_SELECTION] Removed Git status prefix: '%s' -> '%s'", str, cleaned)
+      end
+    end
+    
+    return cleaned
+  end
+  
   -- Use the same safe Unicode cleanup function as in send_grep_results
   local function remove_icons_safely(str)
     local result = {}
@@ -490,7 +565,9 @@ function M.parse_selection(selection, opts)
     return table.concat(result)
   end
   
-  local file_path = remove_icons_safely(selection)
+  -- Apply Git status cleanup first, then Unicode cleanup
+  local file_path = remove_git_status_prefix(selection)
+  file_path = remove_icons_safely(file_path)
   
   file_path = vim.trim(file_path)
   if opts.is_buffer then
