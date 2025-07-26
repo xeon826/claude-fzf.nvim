@@ -1,5 +1,6 @@
 --- Notification service module - Supports snacks.nvim integration and configurable notifications
 local M = {}
+local logger = require('claude-fzf.logger')
 
 -- Notification types
 M.types = {
@@ -19,11 +20,11 @@ end
 -- Check snacks.nvim availability
 local function has_snacks()
   local ok, snacks = pcall(require, 'snacks')
-  return ok and snacks.notify ~= nil
+  return ok and snacks and snacks.notify ~= nil
 end
 
 -- Get notification level
-local function get_vim_level(type)
+local function get_vim_level(notify_type)
   local levels = {
     [M.types.ERROR] = vim.log.levels.ERROR,
     [M.types.WARNING] = vim.log.levels.WARN,
@@ -31,7 +32,7 @@ local function get_vim_level(type)
     [M.types.SUCCESS] = vim.log.levels.INFO,
     [M.types.PROGRESS] = vim.log.levels.INFO,
   }
-  return levels[type] or vim.log.levels.INFO
+  return levels[notify_type] or vim.log.levels.INFO
 end
 
 -- Format message
@@ -43,37 +44,69 @@ local function format_message(message, title)
 end
 
 -- Send notification using snacks.nvim
-local function notify_with_snacks(message, type, opts)
-  local snacks = require('snacks')
+local function notify_with_snacks(message, notify_type, opts)
+  local ok, snacks = pcall(require, 'snacks')
+  if not ok then
+    return notify_with_vim(message, notify_type, opts)
+  end
+  
+  if not snacks.notify then
+    return notify_with_vim(message, notify_type, opts)
+  end
+  
   local snacks_opts = {
     title = opts.title,
     timeout = opts.timeout,
     id = opts.id,
   }
   
-  -- Select appropriate snacks method based on type
-  if type == M.types.ERROR then
-    snacks.notify.error(message, snacks_opts)
-  elseif type == M.types.WARNING then
-    snacks.notify.warn(message, snacks_opts)
-  elseif type == M.types.SUCCESS then
-    snacks.notify.info(message, snacks_opts)
-  else
-    snacks.notify(message, snacks_opts)
+  -- Select appropriate snacks method based on type with safety checks
+  local success, err = pcall(function()
+    if notify_type == M.types.ERROR then
+      if snacks.notify.error then
+        snacks.notify.error(message, snacks_opts)
+      else
+        snacks.notify(message, snacks_opts)
+      end
+    elseif notify_type == M.types.WARNING then
+      if snacks.notify.warn then
+        snacks.notify.warn(message, snacks_opts)
+      else
+        snacks.notify(message, snacks_opts)
+      end
+    elseif notify_type == M.types.SUCCESS then
+      if snacks.notify.info then
+        snacks.notify.info(message, snacks_opts)
+      else
+        snacks.notify(message, snacks_opts)
+      end
+    else
+      snacks.notify(message, snacks_opts)
+    end
+  end)
+  
+  if not success then
+    logger.error("snacks.notify call failed: %s", err)
+    notify_with_vim(message, notify_type, opts)
   end
 end
 
 -- Send notification using native vim.notify
-local function notify_with_vim(message, type, opts)
+local function notify_with_vim(message, notify_type, opts)
   local formatted_msg = format_message(message, opts.title)
-  local vim_level = get_vim_level(type)
+  local vim_level = get_vim_level(notify_type)
   local vim_opts = {}
   
   if opts.replace and opts.id then
     vim_opts.replace = opts.replace
   end
   
-  vim.notify(formatted_msg, vim_level, vim_opts)
+  local success, err = pcall(vim.notify, formatted_msg, vim_level, vim_opts)
+  if not success then
+    logger.error("vim.notify failed: %s", err)
+    -- Last resort: use print
+    print(string.format("[claude-fzf] %s", formatted_msg))
+  end
 end
 
 -- Core notification function
@@ -100,10 +133,20 @@ function M.notify(message, type, opts)
   opts.timeout = opts.timeout or config.timeout or 3000
   
   -- Select notification backend
-  if config.use_snacks and has_snacks() then
-    notify_with_snacks(message, type, opts)
-  else
-    notify_with_vim(message, type, opts)
+  local use_snacks = config.use_snacks and has_snacks()
+  
+  local success, err = pcall(function()
+    if use_snacks then
+      notify_with_snacks(message, type, opts)
+    else
+      notify_with_vim(message, type, opts)
+    end
+  end)
+  
+  if not success then
+    logger.error("Notification failed: %s", err)
+    -- Last resort fallback
+    print(string.format("[claude-fzf] %s: %s", type, message))
   end
 end
 

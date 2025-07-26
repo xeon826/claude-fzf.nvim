@@ -11,7 +11,7 @@ claude-fzf.nvim 是一个专业的 Neovim 插件，将 [fzf-lua](https://github.
 - 🚀 **批量文件选择**: 使用 fzf-lua 多选功能批量添加文件到 Claude 上下文
 - 🔍 **智能搜索集成**: 通过 grep 搜索并直接发送相关代码片段到 Claude
 - 🌳 **智能上下文提取**: 基于 Tree-sitter 的语法感知上下文检测
-- 📁 **多种选择器**: 支持文件、缓冲区、Git 文件等多种选择方式
+- 📁 **多种选择器**: 支持文件、缓冲区、Git 文件、目录文件等多种选择方式
 - ⚡ **性能优化**: 懒加载、缓存和批处理确保流畅体验
 - 🎨 **可视化反馈**: 进度指示器和状态通知
 - 🛠️ **高度可配置**: 丰富的配置选项和自定义键映射
@@ -41,12 +41,13 @@ claude-fzf.nvim 是一个专业的 Neovim 插件，将 [fzf-lua](https://github.
     auto_context = true,
     batch_size = 10,
   },
-  cmd = { "ClaudeFzf", "ClaudeFzfFiles", "ClaudeFzfGrep", "ClaudeFzfBuffers", "ClaudeFzfGitFiles" },
+  cmd = { "ClaudeFzf", "ClaudeFzfFiles", "ClaudeFzfGrep", "ClaudeFzfBuffers", "ClaudeFzfGitFiles", "ClaudeFzfDirectory" },
   keys = {
     { "<leader>cf", "<cmd>ClaudeFzfFiles<cr>", desc = "Claude: 添加文件" },
     { "<leader>cg", "<cmd>ClaudeFzfGrep<cr>", desc = "Claude: 搜索并添加" },
     { "<leader>cb", "<cmd>ClaudeFzfBuffers<cr>", desc = "Claude: 添加缓冲区" },
     { "<leader>cgf", "<cmd>ClaudeFzfGitFiles<cr>", desc = "Claude: 添加 Git 文件" },
+    { "<leader>cd", "<cmd>ClaudeFzfDirectory<cr>", desc = "Claude: 添加目录文件" },
   },
 }
 ```
@@ -71,6 +72,7 @@ require('claude-fzf').setup({
     grep = "<leader>cg", 
     buffers = "<leader>cb",
     git_files = "<leader>cgf",
+    directory_files = "<leader>cd",
   },
 })
 EOF
@@ -141,6 +143,7 @@ require('claude-fzf').setup({
     grep = "<leader>cg",             -- 搜索选择器
     buffers = "<leader>cb",          -- 缓冲区选择器
     git_files = "<leader>cgf",       -- Git 文件选择器
+    directory_files = "<leader>cd",     -- 目录文件选择器
   },
   
   -- fzf-lua 配置
@@ -157,6 +160,20 @@ require('claude-fzf').setup({
     }
   },
   
+  -- 目录搜索配置
+  directory_search = {
+    directories = {
+      -- 在这里添加您的自定义目录
+      -- 示例:
+      -- screenshots = {
+      --   path = vim.fn.expand("~/Desktop"),
+      --   extensions = { "png", "jpg", "jpeg" },
+      --   description = "截图文件"
+      -- }
+    },
+    default_extensions = {},  -- 空表示所有文件
+  },
+
   -- Claude 集成配置
   claude_opts = {
     auto_open_terminal = true,       -- 发送后自动打开终端
@@ -176,6 +193,7 @@ require('claude-fzf').setup({
 | `:ClaudeFzfGrep` | 使用 fzf grep 搜索并发送到 Claude |
 | `:ClaudeFzfBuffers` | 使用 fzf 选择缓冲区发送到 Claude |
 | `:ClaudeFzfGitFiles` | 使用 fzf 选择 Git 文件发送到 Claude |
+| `:ClaudeFzfDirectory` | 使用 fzf 选择特定目录的文件发送到 Claude |
 | `:ClaudeFzf [subcommand]` | 通用命令，支持子命令 |
 | `:ClaudeFzfHealth` | 检查插件健康状态 |
 | `:ClaudeFzfDebug [option]` | 调试工具和日志管理 |
@@ -188,6 +206,7 @@ require('claude-fzf').setup({
 | `<leader>cg` | 打开搜索选择器 |
 | `<leader>cb` | 打开缓冲区选择器 |
 | `<leader>cgf` | 打开 Git 文件选择器 |
+| `<leader>cd` | 打开目录文件选择器 |
 
 ### fzf 界面快捷键
 
@@ -222,6 +241,9 @@ require('claude-fzf').buffers(opts)
 -- Git 文件选择器
 require('claude-fzf').git_files(opts)
 
+-- 目录文件选择器
+require('claude-fzf').directory_files(opts)
+
 -- 获取当前配置
 require('claude-fzf').get_config()
 ```
@@ -252,6 +274,79 @@ require('claude-fzf').get_config()
 - 必需依赖是否安装
 - 配置是否有效
 - 集成功能是否可用
+
+## 📂 目录文件功能
+
+目录文件选择器允许您快速搜索和选择您配置的目录中的文件，并支持可选的文件类型过滤。
+
+### 需要配置
+
+目录文件选择器是完全用户可配置的。没有预定义目录 - 您必须在配置中定义要使用的目录。
+
+### 使用示例
+
+**先配置目录，然后使用:**
+```vim
+:ClaudeFzfDirectory                 " 显示已配置的目录选择器
+```
+
+**键盘快捷键:**
+```vim
+<leader>cd                          " 打开目录选择器
+```
+
+**程序化使用:**
+```lua
+-- 显示目录选择器（仅在配置了目录时有效）
+require('claude-fzf').directory_files()
+
+-- 直接访问特定目录（如果已配置）
+require('claude-fzf').directory_files({ directory = 'screenshots' })
+```
+
+### 自定义目录配置
+
+在配置中添加您自己的目录:
+
+```lua
+require('claude-fzf').setup({
+  directory_search = {
+    directories = {
+      -- 添加您的自定义目录
+      screenshots = {
+        path = vim.fn.expand("~/Desktop"),
+        extensions = { "png", "jpg", "jpeg" },
+        description = "截图文件"
+      },
+      my_configs = {
+        path = vim.fn.expand("~/.config"),
+        extensions = { "lua", "vim", "json", "yaml" },
+        description = "配置文件"
+      },
+      project_docs = {
+        path = vim.fn.expand("~/Projects/docs"),
+        extensions = { "md", "txt", "rst" },
+        description = "项目文档"
+      }
+    }
+  }
+})
+```
+
+### 目录选择器工作流程
+
+1. **目录选择**: 首先从可用目录中选择
+2. **文件过滤**: 文件按配置的扩展名自动过滤
+3. **多选**: 使用 Tab 键选择多个文件
+4. **发送到 Claude**: 按 Enter 键发送选中的文件
+
+### 功能特点
+
+- ✅ **智能路径验证**: 搜索前检查目录是否存在
+- ✅ **扩展名过滤**: 只显示匹配配置扩展名的文件
+- ✅ **性能优化**: 使用 `fd` 命令进行快速文件发现
+- ✅ **可视状态**: 目录可用性用 ✓/✗ 指示器显示
+- ✅ **Unicode 支持**: 正确处理 Unicode 文件名和路径
 
 ## 🎯 高级用法
 

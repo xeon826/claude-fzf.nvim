@@ -13,7 +13,7 @@ claude-fzf.nvim is a professional Neovim plugin that perfectly integrates the po
 - 🚀 **Batch File Selection**: Use fzf-lua's multi-select functionality to batch add files to Claude context
 - 🔍 **Smart Search Integration**: Search with grep and send relevant code snippets directly to Claude
 - 🌳 **Intelligent Context Extraction**: Tree-sitter based syntax-aware context detection
-- 📁 **Multiple Pickers**: Support for files, buffers, Git files and more selection methods
+- 📁 **Multiple Pickers**: Support for files, buffers, Git files, directory files and more selection methods
 - ⚡ **Performance Optimized**: Lazy loading, caching, and batch processing ensure smooth experience
 - 🎨 **Visual Feedback**: Progress indicators and status notifications
 - 🛠️ **Highly Configurable**: Rich configuration options and custom keymaps
@@ -43,12 +43,13 @@ claude-fzf.nvim is a professional Neovim plugin that perfectly integrates the po
     auto_context = true,
     batch_size = 10,
   },
-  cmd = { "ClaudeFzf", "ClaudeFzfFiles", "ClaudeFzfGrep", "ClaudeFzfBuffers", "ClaudeFzfGitFiles" },
+  cmd = { "ClaudeFzf", "ClaudeFzfFiles", "ClaudeFzfGrep", "ClaudeFzfBuffers", "ClaudeFzfGitFiles", "ClaudeFzfDirectory" },
   keys = {
     { "<leader>cf", "<cmd>ClaudeFzfFiles<cr>", desc = "Claude: Add files" },
     { "<leader>cg", "<cmd>ClaudeFzfGrep<cr>", desc = "Claude: Search and add" },
     { "<leader>cb", "<cmd>ClaudeFzfBuffers<cr>", desc = "Claude: Add buffers" },
     { "<leader>cgf", "<cmd>ClaudeFzfGitFiles<cr>", desc = "Claude: Add Git files" },
+    { "<leader>cd", "<cmd>ClaudeFzfDirectory<cr>", desc = "Claude: Add directory files" },
   },
 }
 ```
@@ -154,6 +155,7 @@ require('claude-fzf').setup({
     grep = "<leader>cg",             -- Search picker
     buffers = "<leader>cb",          -- Buffer picker
     git_files = "<leader>cgf",       -- Git files picker
+    directory_files = "<leader>cd",     -- Directory files picker
   },
 
   -- fzf-lua configuration
@@ -168,6 +170,20 @@ require('claude-fzf').setup({
       width = 0.8,               -- Window width ratio
       backdrop = 60,             -- Background transparency
     }
+  },
+
+  -- Directory search configuration
+  directory_search = {
+    directories = {
+      -- Add your custom directories here
+      -- Example:
+      -- screenshots = {
+      --   path = vim.fn.expand("~/Desktop"),
+      --   extensions = { "png", "jpg", "jpeg" },
+      --   description = "Screenshots"
+      -- }
+    },
+    default_extensions = {},  -- Empty means all files
   },
 
   -- Claude integration configuration
@@ -189,6 +205,7 @@ require('claude-fzf').setup({
 | `:ClaudeFzfGrep`           | Use fzf grep to search and send to Claude     |
 | `:ClaudeFzfBuffers`        | Use fzf to select buffers to send to Claude   |
 | `:ClaudeFzfGitFiles`       | Use fzf to select Git files to send to Claude |
+| `:ClaudeFzfDirectory`      | Use fzf to select files from specific directories |
 | `:ClaudeFzf [subcommand]`  | Generic command supporting subcommands        |
 | `:ClaudeFzfHealth`         | Check plugin health status                    |
 | `:ClaudeFzfDebug [option]` | Debug tools and log management                |
@@ -201,6 +218,7 @@ require('claude-fzf').setup({
 | `<leader>cg`  | Open search picker    |
 | `<leader>cb`  | Open buffer picker    |
 | `<leader>cgf` | Open Git files picker |
+| `<leader>cd`  | Open directory files picker |
 
 ### fzf Interface Shortcuts
 
@@ -235,6 +253,9 @@ require('claude-fzf').buffers(opts)
 -- Git files picker
 require('claude-fzf').git_files(opts)
 
+-- Directory files picker
+require('claude-fzf').directory_files(opts)
+
 -- Get current configuration
 require('claude-fzf').get_config()
 ```
@@ -266,6 +287,79 @@ Health check will verify:
 - Required dependencies installation
 - Configuration validity
 - Integration functionality availability
+
+## 📂 Directory Files Feature
+
+The directory files picker allows you to quickly search and select files from your configured directories with optional file type filtering.
+
+### Configuration Required
+
+The directory files picker is completely user-configurable. No directories are predefined - you must configure the directories you want to use in your setup.
+
+### Usage Examples
+
+**Configure directories first, then use:**
+```vim
+:ClaudeFzfDirectory                 " Shows configured directory selector
+```
+
+**Keyboard shortcut:**
+```vim
+<leader>cd                          " Open directory picker
+```
+
+**Programmatic usage:**
+```lua
+-- Show directory selector (only works if directories are configured)
+require('claude-fzf').directory_files()
+
+-- Direct access to specific directory (if configured)
+require('claude-fzf').directory_files({ directory = 'screenshots' })
+```
+
+### Custom Directory Configuration
+
+Add your own directories in the configuration:
+
+```lua
+require('claude-fzf').setup({
+  directory_search = {
+    directories = {
+      -- Add your custom directories
+      screenshots = {
+        path = vim.fn.expand("~/Desktop"),
+        extensions = { "png", "jpg", "jpeg" },
+        description = "Screenshots"
+      },
+      my_configs = {
+        path = vim.fn.expand("~/.config"),
+        extensions = { "lua", "vim", "json", "yaml" },
+        description = "Config Files"
+      },
+      project_docs = {
+        path = vim.fn.expand("~/Projects/docs"),
+        extensions = { "md", "txt", "rst" },
+        description = "Project Documentation"
+      }
+    }
+  }
+})
+```
+
+### Directory Picker Workflow
+
+1. **Directory Selection**: First, choose from available directories
+2. **File Filtering**: Files are automatically filtered by configured extensions
+3. **Multi-selection**: Use Tab to select multiple files
+4. **Send to Claude**: Press Enter to send selected files
+
+### Features
+
+- ✅ **Smart Path Validation**: Checks if directories exist before searching
+- ✅ **Extension Filtering**: Only show files matching configured extensions
+- ✅ **Performance Optimized**: Uses `fd` command for fast file discovery
+- ✅ **Visual Status**: Directory availability shown with ✓/✗ indicators
+- ✅ **Unicode Support**: Properly handles Unicode filenames and paths
 
 ## 🎯 Advanced Usage
 

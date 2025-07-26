@@ -31,6 +31,7 @@ M.defaults = {
     grep = "<leader>cg", 
     buffers = "<leader>cb",
     git_files = "<leader>cgf",
+    directory_files = "<leader>cd",
   },
   
   fzf_opts = {
@@ -52,6 +53,20 @@ M.defaults = {
     source_tag = "claude-fzf",
   },
   
+  -- Directory search configuration
+  directory_search = {
+    directories = {
+      -- Add your custom directories here
+      -- Example:
+      -- screenshots = {
+      --   path = vim.fn.expand("~/Desktop"),
+      --   extensions = { "png", "jpg", "jpeg" },
+      --   description = "Screenshots"
+      -- }
+    },
+    default_extensions = {},  -- Empty means all files
+  },
+
   picker_opts = {
     files = {
       prompt = 'Add to Claude> ',
@@ -68,6 +83,10 @@ M.defaults = {
     git_files = {
       prompt = 'Claude Git Files> ',
       header = 'Select Git files to add to Claude. Tab to multi-select, Enter to confirm.',
+    },
+    directory_files = {
+      prompt = 'Claude Directory> ',
+      header = 'Select files from directory to add to Claude. Tab to multi-select, Enter to confirm.',
     }
   }
 }
@@ -116,6 +135,7 @@ function M.validate_config()
       fzf_opts = { M._config.fzf_opts, 'table' },
       claude_opts = { M._config.claude_opts, 'table' },
       picker_opts = { M._config.picker_opts, 'table' },
+      directory_search = { M._config.directory_search, 'table' },
     })
   end)
   

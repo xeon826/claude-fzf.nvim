@@ -5,7 +5,6 @@ local logger = require('claude-fzf.logger')
 local fzf_lua = nil
 local function get_fzf()
   if not fzf_lua then
-    logger.debug("Attempting to load fzf-lua")
     local ok, fzf = pcall(require, 'fzf-lua')
     if ok then 
       fzf_lua = fzf 
@@ -24,59 +23,37 @@ function M.create_claude_action(action_type, opts)
   return function(selected, o)
     logger.debug("[CLAUDE_ACTION] Action triggered: %s", action_type)
     logger.debug("[CLAUDE_ACTION] Selected items count: %d", selected and #selected or 0)
-    logger.debug("[CLAUDE_ACTION] Raw selected items: %s", vim.inspect(selected))
-    logger.debug("[CLAUDE_ACTION] FZF options: %s", vim.inspect(o))
     
     if not selected or #selected == 0 then
-      logger.debug("[CLAUDE_ACTION] No items selected, aborting")
       notify.info('No items selected')
       return
     end
     
-    -- Debug each selected item
-    for i, item in ipairs(selected) do
-      logger.debug("[CLAUDE_ACTION] Item %d: '%s' (type: %s, length: %d)", 
-        i, item, type(item), #item)
-      local bytes = {}
-      for j = 1, math.min(#item, 50) do  -- Only show first 50 bytes
-        table.insert(bytes, string.byte(item, j))
-      end
-      logger.debug("[CLAUDE_ACTION] Item %d bytes: [%s]", i, table.concat(bytes, ", "))
-    end
-    
     local claudecode = require('claude-fzf.integrations.claudecode')
-    
-    logger.debug("[CLAUDE_ACTION] Dispatching to action type: %s", action_type)
     
     local result
     if action_type == 'files' then
-      logger.debug("[CLAUDE_ACTION] Sending to claudecode.send_selections")
       result = claudecode.send_selections(selected, opts)
     elseif action_type == 'grep' then
-      logger.debug("[CLAUDE_ACTION] Sending to claudecode.send_grep_results")
       result = claudecode.send_grep_results(selected, opts)
     elseif action_type == 'buffers' then
-      logger.debug("[CLAUDE_ACTION] Sending to claudecode.send_buffer_selections")
       result = claudecode.send_buffer_selections(selected, opts)
     else
-      logger.error("[CLAUDE_ACTION] Unknown action type: %s", action_type)
+      logger.error("Unknown action type: %s", action_type)
       notify.error('Unknown action type: ' .. action_type)
       return false
     end
     
-    logger.debug("[CLAUDE_ACTION] Action completed with result: %s", result)
     return result
   end
 end
 
 function M.files(opts)
   logger.info("Starting files picker")
-  logger.debug("Files picker options: %s", vim.inspect(opts))
   
   local ok, result = logger.safe_call(function()
     local config = require('claude-fzf.config')
     opts = config.get_picker_opts('files', opts)
-    logger.debug("Processed picker options: %s", vim.inspect(opts))
     
     local fzf = get_fzf()
     
@@ -103,8 +80,11 @@ function M.files(opts)
           end
         end,
         ['alt-a'] = function(selected, o)
-          logger.debug("Toggle all action triggered")
-          fzf.actions.toggle_all(selected, o)
+          if fzf.actions and fzf.actions.toggle_all then
+            fzf.actions.toggle_all(selected, o)
+          else
+            return selected
+          end
         end,
       }
     })
@@ -136,7 +116,11 @@ function M.live_grep(opts)
       ['default'] = M.create_claude_action('grep'),
       ['ctrl-y'] = M.create_claude_action('grep', { with_context = true }),
       ['alt-a'] = function(selected, o)
-        fzf.actions.toggle_all(selected, o)
+        if fzf.actions and fzf.actions.toggle_all then
+          fzf.actions.toggle_all(selected, o)
+        else
+          return selected
+        end
       end,
     }
   })
@@ -160,7 +144,11 @@ function M.buffers(opts)
       ['default'] = M.create_claude_action('buffers'),
       ['ctrl-y'] = M.create_claude_action('buffers', { with_context = true }),
       ['alt-a'] = function(selected, o)
-        fzf.actions.toggle_all(selected, o)
+        if fzf.actions and fzf.actions.toggle_all then
+          fzf.actions.toggle_all(selected, o)
+        else
+          return selected
+        end
       end,
     }
   })
@@ -184,10 +172,169 @@ function M.git_files(opts)
       ['default'] = M.create_claude_action('files'),
       ['ctrl-y'] = M.create_claude_action('files', { with_context = true }),
       ['alt-a'] = function(selected, o)
-        fzf.actions.toggle_all(selected, o)
+        if fzf.actions and fzf.actions.toggle_all then
+          fzf.actions.toggle_all(selected, o)
+        else
+          return selected
+        end
       end,
     }
   })
+end
+
+function M.directory_files(opts)
+  logger.info("Starting directory files picker")
+  
+  local ok, result = logger.safe_call(function()
+    local config = require('claude-fzf.config')
+    local full_config = config.get()
+    
+    -- Show directory selection first if no directory specified
+    if not opts or not opts.directory then
+      return M._show_directory_selector(opts)
+    end
+    
+    -- Get directory configuration
+    local dir_config = full_config.directory_search.directories[opts.directory]
+    if not dir_config then
+      logger.error("Unknown directory configuration: %s", opts.directory)
+      notify.error('Unknown directory: ' .. opts.directory)
+      return false
+    end
+    
+    -- Check if directory exists
+    if vim.fn.isdirectory(dir_config.path) == 0 then
+      logger.warn("Directory does not exist: %s", dir_config.path)
+      notify.warning('Directory does not exist: ' .. dir_config.path)
+      return false
+    end
+    
+    -- Build file search command with extension filtering
+    local search_cmd = M._build_directory_search_cmd(dir_config)
+    
+    opts = config.get_picker_opts('directory_files', opts)
+    local fzf = get_fzf()
+    
+    return fzf.fzf_exec(table.concat(search_cmd, ' '), {
+      prompt = string.format('%s (%s)> ', opts.prompt or 'Claude Directory', dir_config.description),
+      multiselect = true,
+      fzf_opts = {
+        ['--header'] = opts.header or 'Select files from directory to add to Claude. Tab to multi-select.',
+      },
+      winopts = opts.winopts or {},
+      preview = opts.preview or {},
+      actions = {
+        ['default'] = M.create_claude_action('files'),
+        ['ctrl-y'] = M.create_claude_action('files', { with_context = true }),
+        ['alt-a'] = function(selected, o)
+          -- toggle_all is handled by fzf keybinding, this is just a placeholder
+          return selected
+        end,
+      }
+    })
+  end, "directory files picker")
+  
+  if not ok then
+    logger.error("Directory files picker failed: %s", result)
+    return false
+  end
+  
+  return result
+end
+
+function M._show_directory_selector(opts)
+  local config = require('claude-fzf.config')
+  local full_config = config.get()
+  local directories = full_config.directory_search.directories
+  
+  -- Build directory list for selection
+  local dir_list = {}
+  for key, dir_config in pairs(directories) do
+    local status = vim.fn.isdirectory(dir_config.path) == 1 and "✓" or "✗"
+    local ext_info = #dir_config.extensions > 0 
+      and string.format(" [%s]", table.concat(dir_config.extensions, ","))
+      or " [all files]"
+    table.insert(dir_list, string.format("%s %s - %s%s", status, key, dir_config.description, ext_info))
+  end
+  
+  if #dir_list == 0 then
+    notify.info([[No directories configured for directory search.
+Add directories in your config:
+require('claude-fzf').setup({
+  directory_search = {
+    directories = {
+      screenshots = {
+        path = vim.fn.expand("~/Desktop"),
+        extensions = { "png", "jpg", "jpeg" },
+        description = "Screenshots"
+      }
+    }
+  }
+})]])
+    return false
+  end
+  
+  local fzf = get_fzf()
+  opts = config.get_picker_opts('directory_files', opts)
+  
+  return fzf.fzf_exec(dir_list, {
+    prompt = 'Select Directory> ',
+    fzf_opts = {
+      ['--header'] = 'Choose a directory to search files from',
+    },
+    winopts = opts.winopts or {},
+    actions = {
+      ['default'] = function(selected)
+        if not selected or #selected == 0 then
+          return
+        end
+        
+        -- Extract directory key from selection
+        local selection = selected[1]
+        -- Parse format: "✓ key - description [extensions]"
+        local parts = vim.split(selection, ' ')
+        local dir_key = parts[2] -- Second part is the key (after status indicator)
+        
+        if not dir_key or dir_key == '' then
+          logger.error("Failed to parse directory selection: %s", selection)
+          notify.error('Failed to parse directory selection')
+          return
+        end
+        
+        -- Check if directory exists before proceeding
+        local dir_config = directories[dir_key]
+        if vim.fn.isdirectory(dir_config.path) == 0 then
+          notify.error('Directory does not exist: ' .. dir_config.path)
+          return
+        end
+        
+        -- Launch directory files picker for selected directory
+        M.directory_files(vim.tbl_extend('force', opts or {}, { directory = dir_key }))
+      end,
+    }
+  })
+end
+
+function M._build_directory_search_cmd(dir_config)
+  local path = dir_config.path
+  local extensions = dir_config.extensions or {}
+  
+  -- Use fd for better performance and Unicode support
+  local cmd = { 'fd', '--type', 'f', '--hidden', '--follow' }
+  
+  -- Add extension filters if specified
+  if #extensions > 0 then
+    for _, ext in ipairs(extensions) do
+      table.insert(cmd, '-e')
+      table.insert(cmd, ext)
+    end
+  end
+  
+  -- Add search path
+  table.insert(cmd, '.')
+  table.insert(cmd, path)
+  
+  return cmd
 end
 
 function M.is_available()
@@ -201,8 +348,18 @@ function M.check_health()
   end
   
   local fzf = get_fzf()
+  
   if not fzf.files then
     return false, 'fzf-lua version too old, missing required features'
+  end
+  
+  -- Check for other required functions
+  local required_functions = {'files', 'live_grep', 'buffers', 'git_files', 'fzf_exec'}
+  for _, func_name in ipairs(required_functions) do
+    if not fzf[func_name] then
+      logger.error("fzf.%s not available", func_name)
+      return false, string.format('fzf-lua missing function: %s', func_name)
+    end
   end
   
   return true, 'fzf-lua available'

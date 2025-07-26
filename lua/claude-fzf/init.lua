@@ -30,6 +30,10 @@ function M.git_files(opts)
   return require('claude-fzf.integrations.fzf').git_files(opts)
 end
 
+function M.directory_files(opts)
+  return require('claude-fzf.integrations.fzf').directory_files(opts)
+end
+
 function M.get_config()
   return M._config
 end

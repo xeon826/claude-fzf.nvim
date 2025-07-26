@@ -44,6 +44,13 @@ function M.setup()
     nargs = '?'
   })
   
+  vim.api.nvim_create_user_command('ClaudeFzfDirectory', function(opts)
+    require('claude-fzf.integrations.fzf').directory_files(parse_args(opts.args))
+  end, { 
+    desc = 'Select files from specific directory with fzf and send to Claude',
+    nargs = '?'
+  })
+  
   vim.api.nvim_create_user_command('ClaudeFzf', function(opts)
     local args = opts.args or ""
     if args == "" or args == "files" then
@@ -54,15 +61,17 @@ function M.setup()
       require('claude-fzf.integrations.fzf').buffers()
     elseif args == "git" then
       require('claude-fzf.integrations.fzf').git_files()
+    elseif args == "directory" or args == "dir" then
+      require('claude-fzf.integrations.fzf').directory_files()
     else
       notify.error('Unknown subcommand: ' .. args)
-      notify.info('Available subcommands: files, grep, buffers, git')
+      notify.info('Available subcommands: files, grep, buffers, git, directory')
     end
   end, { 
     desc = 'Claude FZF - Multi-functional selector',
     nargs = '?',
     complete = function()
-      return {'files', 'grep', 'buffers', 'git'}
+      return {'files', 'grep', 'buffers', 'git', 'directory', 'dir'}
     end
   })
   
@@ -83,6 +92,10 @@ function M.setup()
   
   if keymaps and keymaps.git_files and keymaps.git_files ~= "" then
     vim.keymap.set('n', keymaps.git_files, '<cmd>ClaudeFzfGitFiles<cr>', { desc = 'Claude: Add Git Files' })
+  end
+  
+  if keymaps and keymaps.directory_files and keymaps.directory_files ~= "" then
+    vim.keymap.set('n', keymaps.directory_files, '<cmd>ClaudeFzfDirectory<cr>', { desc = 'Claude: Add Directory Files' })
   end
   
   -- Debug commands
