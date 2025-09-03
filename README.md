@@ -229,6 +229,7 @@ In fzf pickers:
 | `Tab`    | Multi-select/deselect                |
 | `Enter`  | Confirm selection and send to Claude |
 | `Ctrl-y` | Send with smart context              |
+| `Ctrl-l` | Copy to clipboard with @ prefix      |
 | `Ctrl-d` | Send directory (files picker only)   |
 | `Alt-a`  | Select all/deselect all              |
 | `Esc`    | Cancel and exit                      |

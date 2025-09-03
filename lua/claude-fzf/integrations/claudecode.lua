@@ -114,6 +114,159 @@ function M.send_selections(selections, opts)
   return success_count > 0
 end
 
+-- Copy selections to clipboard with @ prefix
+function M.copy_selections_to_clipboard(selections, opts)
+  opts = opts or {}
+  logger.info("Copying %d selections to clipboard", #selections)
+  logger.debug("Selections: %s", vim.inspect(selections))
+  logger.debug("Options: %s", vim.inspect(opts))
+  
+  if not selections or #selections == 0 then
+    notify.info('No items selected')
+    return false, "No items selected"
+  end
+  
+  -- Prepare clean file paths with @ prefix
+  local clipboard_content = {}
+  local total = #selections
+  local success_count = 0
+  
+  for i, selection in ipairs(selections) do
+    logger.debug("Processing selection %d/%d for clipboard: %s", i, total, selection)
+    
+    local file_info = M.parse_selection(selection)
+    if file_info then
+      logger.debug("Parsed file info for clipboard: %s", vim.inspect(file_info))
+      -- Format with @ prefix like Claude sends
+      local formatted_path = "@" .. file_info.path
+      if file_info.start_line then
+        formatted_path = formatted_path .. ":" .. file_info.start_line
+        if file_info.end_line and file_info.end_line ~= file_info.start_line then
+          formatted_path = formatted_path .. "-" .. file_info.end_line
+        end
+      end
+      table.insert(clipboard_content, formatted_path)
+      success_count = success_count + 1
+    else
+      logger.warn("[COPY_CLIPBOARD] Invalid selection: '%s'", selection)
+      notify.warn(string.format('Invalid selection: %s', selection))
+    end
+  end
+  
+  if #clipboard_content > 0 then
+    -- Join all paths with spaces instead of newlines
+    local clipboard_text = table.concat(clipboard_content, " ")
+    logger.debug("Clipboard content: %s", clipboard_text)
+    
+    -- Copy to system clipboard
+    vim.fn.setreg('+', clipboard_text)
+    
+    -- Also copy to unnamed register for easy pasting
+    vim.fn.setreg('"', clipboard_text)
+    
+    logger.info("Successfully copied %d items to clipboard", success_count)
+    notify.info(string.format('Copied %d file%s to clipboard with @ prefix', 
+      success_count, success_count == 1 and "" or "s"))
+    
+    return true, success_count
+  else
+    logger.error("No valid selections to copy")
+    notify.error("No valid selections to copy")
+    return false, "No valid selections"
+  end
+end
+
+-- Copy grep results to clipboard with @ prefix
+function M.copy_grep_results_to_clipboard(selections, opts)
+  opts = opts or {}
+  logger.info("Copying %d grep results to clipboard", #selections)
+  
+  if not selections or #selections == 0 then
+    notify.info('No items selected')
+    return false, "No items selected"
+  end
+  
+  local clipboard_content = {}
+  local success_count = 0
+  
+  for i, selection in ipairs(selections) do
+    logger.debug("Processing grep result %d/%d for clipboard: %s", i, #selections, selection)
+    
+    -- Parse grep result format (similar to existing send_grep_results logic)
+    local file_info = M.parse_selection(selection)
+    if file_info then
+      local formatted_path = "@" .. file_info.path
+      if file_info.start_line then
+        formatted_path = formatted_path .. ":" .. file_info.start_line
+      end
+      table.insert(clipboard_content, formatted_path)
+      success_count = success_count + 1
+    else
+      logger.warn("[COPY_GREP_CLIPBOARD] Invalid grep result: '%s'", selection)
+    end
+  end
+  
+  if #clipboard_content > 0 then
+    local clipboard_text = table.concat(clipboard_content, " ")
+    vim.fn.setreg('+', clipboard_text)
+    vim.fn.setreg('"', clipboard_text)
+    
+    logger.info("Successfully copied %d grep results to clipboard", success_count)
+    notify.info(string.format('Copied %d grep result%s to clipboard with @ prefix', 
+      success_count, success_count == 1 and "" or "s"))
+    
+    return true, success_count
+  else
+    notify.error("No valid grep results to copy")
+    return false, "No valid selections"
+  end
+end
+
+-- Copy buffer selections to clipboard with @ prefix  
+function M.copy_buffer_selections_to_clipboard(selections, opts)
+  opts = opts or {}
+  logger.info("Copying %d buffer selections to clipboard", #selections)
+  
+  if not selections or #selections == 0 then
+    notify.info('No items selected')
+    return false, "No items selected"
+  end
+  
+  local clipboard_content = {}
+  local success_count = 0
+  
+  for i, selection in ipairs(selections) do
+    logger.debug("Processing buffer selection %d/%d for clipboard: %s", i, #selections, selection)
+    
+    local file_info = M.parse_buffer_selection(selection)
+    if file_info then
+      local formatted_path = "@" .. file_info.path
+      if file_info.start_line then
+        formatted_path = formatted_path .. ":" .. file_info.start_line
+      end
+      table.insert(clipboard_content, formatted_path)
+      success_count = success_count + 1
+    else
+      logger.warn("[COPY_BUFFER_CLIPBOARD] Invalid buffer selection: '%s'", selection)
+    end
+  end
+  
+  if #clipboard_content > 0 then
+    local clipboard_text = table.concat(clipboard_content, " ")
+    vim.fn.setreg('+', clipboard_text)
+    vim.fn.setreg('"', clipboard_text)
+    
+    logger.info("Successfully copied %d buffer selections to clipboard", success_count)
+    notify.info(string.format('Copied %d buffer%s to clipboard with @ prefix', 
+      success_count, success_count == 1 and "" or "s"))
+    
+    return true, success_count
+  else
+    notify.error("No valid buffer selections to copy")
+    return false, "No valid selections"
+  end
+end
+
 function M.send_grep_results(selections, opts)
   opts = opts or {}
   

@@ -48,6 +48,38 @@ function M.create_claude_action(action_type, opts)
   end
 end
 
+-- Create clipboard copy action
+function M.create_clipboard_action(action_type, opts)
+  opts = opts or {}
+  
+  return function(selected, o)
+    logger.debug("[CLIPBOARD_ACTION] Action triggered: %s", action_type)
+    logger.debug("[CLIPBOARD_ACTION] Selected items count: %d", selected and #selected or 0)
+    
+    if not selected or #selected == 0 then
+      notify.info('No items selected')
+      return
+    end
+    
+    local claudecode = require('claude-fzf.integrations.claudecode')
+    
+    local result
+    if action_type == 'files' then
+      result = claudecode.copy_selections_to_clipboard(selected, opts)
+    elseif action_type == 'grep' then
+      result = claudecode.copy_grep_results_to_clipboard(selected, opts)
+    elseif action_type == 'buffers' then
+      result = claudecode.copy_buffer_selections_to_clipboard(selected, opts)
+    else
+      logger.error("Unknown clipboard action type: %s", action_type)
+      notify.error('Unknown clipboard action type: ' .. action_type)
+      return false
+    end
+    
+    return result
+  end
+end
+
 function M.files(opts)
   logger.info("Starting files picker")
   
@@ -68,6 +100,7 @@ function M.files(opts)
       actions = {
         ['default'] = M.create_claude_action('files'),
         ['ctrl-y'] = M.create_claude_action('files', { with_context = true }),
+        ['ctrl-l'] = M.create_clipboard_action('files'),
         ['ctrl-d'] = function(selected)
           logger.debug("Directory action triggered with: %s", vim.inspect(selected))
           local utils = require('claude-fzf.utils')  
@@ -115,6 +148,7 @@ function M.live_grep(opts)
     actions = {
       ['default'] = M.create_claude_action('grep'),
       ['ctrl-y'] = M.create_claude_action('grep', { with_context = true }),
+      ['ctrl-l'] = M.create_clipboard_action('grep'),
       ['alt-a'] = function(selected, o)
         if fzf.actions and fzf.actions.toggle_all then
           fzf.actions.toggle_all(selected, o)
@@ -143,6 +177,7 @@ function M.buffers(opts)
     actions = {
       ['default'] = M.create_claude_action('buffers'),
       ['ctrl-y'] = M.create_claude_action('buffers', { with_context = true }),
+      ['ctrl-l'] = M.create_clipboard_action('buffers'),
       ['alt-a'] = function(selected, o)
         if fzf.actions and fzf.actions.toggle_all then
           fzf.actions.toggle_all(selected, o)
@@ -171,6 +206,7 @@ function M.git_files(opts)
     actions = {
       ['default'] = M.create_claude_action('files'),
       ['ctrl-y'] = M.create_claude_action('files', { with_context = true }),
+      ['ctrl-c'] = M.create_clipboard_action('files'),
       ['alt-a'] = function(selected, o)
         if fzf.actions and fzf.actions.toggle_all then
           fzf.actions.toggle_all(selected, o)
@@ -215,9 +251,10 @@ function M.directory_files(opts)
     opts = config.get_picker_opts('directory_files', opts)
     local fzf = get_fzf()
     
-    return fzf.fzf_exec(table.concat(search_cmd, ' '), {
+    return fzf.files({
       prompt = string.format('%s (%s)> ', opts.prompt or 'Claude Directory', dir_config.description),
       multiselect = true,
+      raw_cmd = table.concat(search_cmd, ' '),
       fzf_opts = {
         ['--header'] = opts.header or 'Select files from directory to add to Claude. Tab to multi-select.',
       },
@@ -226,6 +263,7 @@ function M.directory_files(opts)
       actions = {
         ['default'] = M.create_claude_action('files'),
         ['ctrl-y'] = M.create_claude_action('files', { with_context = true }),
+        ['ctrl-l'] = M.create_clipboard_action('files'),
         ['alt-a'] = function(selected, o)
           -- toggle_all is handled by fzf keybinding, this is just a placeholder
           return selected

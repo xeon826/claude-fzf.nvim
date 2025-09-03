@@ -217,6 +217,7 @@ require('claude-fzf').setup({
 | `Tab` | 多选/取消选择 |
 | `Enter` | 确认选择并发送到 Claude |
 | `Ctrl-y` | 发送时包含智能上下文 |
+| `Ctrl-l` | 复制到剪切板（带@前缀） |
 | `Ctrl-d` | 发送目录（仅文件选择器） |
 | `Alt-a` | 全选/取消全选 |
 | `Esc` | 取消并退出 |
