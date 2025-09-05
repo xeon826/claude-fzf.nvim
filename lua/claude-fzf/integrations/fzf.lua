@@ -203,15 +203,18 @@ function M.git_files(opts)
     },
     winopts = opts.winopts or {},
     preview = opts.preview or {},
-    actions = {
-      ['default'] = M.create_claude_action('files'),
-      ['ctrl-y'] = M.create_claude_action('files', { with_context = true }),
-      ['ctrl-c'] = M.create_clipboard_action('files'),
-      ['alt-a'] = function(selected, o)
-        if fzf.actions and fzf.actions.toggle_all then
-          fzf.actions.toggle_all(selected, o)
-        else
-          return selected
+      actions = {
+        ['default'] = M.create_claude_action('files'),
+        ['ctrl-y'] = M.create_claude_action('files', { with_context = true }),
+        -- Use Ctrl-l for copy to align with other pickers
+        ['ctrl-l'] = M.create_clipboard_action('files'),
+        -- Keep Ctrl-c as an additional alias for backward compatibility
+        ['ctrl-c'] = M.create_clipboard_action('files'),
+        ['alt-a'] = function(selected, o)
+          if fzf.actions and fzf.actions.toggle_all then
+            fzf.actions.toggle_all(selected, o)
+          else
+            return selected
         end
       end,
     }

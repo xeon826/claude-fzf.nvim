@@ -149,7 +149,7 @@ function M.copy_selections_to_clipboard(selections, opts)
       success_count = success_count + 1
     else
       logger.warn("[COPY_CLIPBOARD] Invalid selection: '%s'", selection)
-      notify.warn(string.format('Invalid selection: %s', selection))
+      notify.warning(string.format('Invalid selection: %s', selection))
     end
   end
   
@@ -191,9 +191,8 @@ function M.copy_grep_results_to_clipboard(selections, opts)
   
   for i, selection in ipairs(selections) do
     logger.debug("Processing grep result %d/%d for clipboard: %s", i, #selections, selection)
-    
-    -- Parse grep result format (similar to existing send_grep_results logic)
-    local file_info = M.parse_selection(selection)
+    -- Parse grep result format using the same logic as send_grep_results
+    local file_info = M.parse_grep_selection and M.parse_grep_selection(selection) or nil
     if file_info then
       local formatted_path = "@" .. file_info.path
       if file_info.start_line then
@@ -238,11 +237,14 @@ function M.copy_buffer_selections_to_clipboard(selections, opts)
   for i, selection in ipairs(selections) do
     logger.debug("Processing buffer selection %d/%d for clipboard: %s", i, #selections, selection)
     
-    local file_info = M.parse_buffer_selection(selection)
-    if file_info then
-      local formatted_path = "@" .. file_info.path
-      if file_info.start_line then
-        formatted_path = formatted_path .. ":" .. file_info.start_line
+    local parsed = M.parse_buffer_selection(selection)
+    if parsed then
+      -- parse_buffer_selection currently returns a string path; accept both string and table
+      local path = type(parsed) == 'string' and parsed or parsed.path
+      local start_line = type(parsed) == 'table' and parsed.start_line or nil
+      local formatted_path = "@" .. path
+      if start_line then
+        formatted_path = formatted_path .. ":" .. start_line
       end
       table.insert(clipboard_content, formatted_path)
       success_count = success_count + 1
@@ -265,6 +267,75 @@ function M.copy_buffer_selections_to_clipboard(selections, opts)
     notify.error("No valid buffer selections to copy")
     return false, "No valid selections"
   end
+end
+
+-- Parse a single ripgrep/fzf-lua grep selection line into path and line
+-- Returns a table: { path = <absolute or resolved path>, start_line = <number>, end_line = <number> }
+function M.parse_grep_selection(line)
+  if not line or line == '' then return nil end
+
+  -- Safe Unicode cleanup (keep CJK, remove Nerd Font icons and special spaces)
+  local function remove_icons_safely(str)
+    local result, i = {}, 1
+    while i <= #str do
+      local b1 = string.byte(str, i)
+      local len, cp = 1, nil
+      if b1 < 128 then cp, len = b1, 1
+      elseif b1 >= 194 and b1 <= 223 then local b2=string.byte(str,i+1); cp=((b1-192)*64)+(b2-128); len=2
+      elseif b1 >= 224 and b1 <= 239 then local b2=string.byte(str,i+1); local b3=string.byte(str,i+2); cp=((b1-224)*4096)+((b2-128)*64)+(b3-128); len=3
+      elseif b1 >= 240 and b1 <= 244 then local b2=string.byte(str,i+1); local b3=string.byte(str,i+2); local b4=string.byte(str,i+3); cp=((b1-240)*262144)+((b2-128)*4096)+((b3-128)*64)+(b4-128); len=4 end
+      local keep = true
+      if cp then
+        if (cp >= 0xE000 and cp <= 0xF8FF) or (cp >= 0xF0000 and cp <= 0xFFFFD) or (cp >= 0x100000 and cp <= 0x10FFFD) then
+          keep = false
+        elseif cp >= 0x2000 and cp <= 0x200F then
+          keep = false
+        elseif cp < 32 and cp ~= 9 and cp ~= 10 and cp ~= 13 then
+          keep = false
+        end
+      end
+      if keep and len > 0 then table.insert(result, string.sub(str, i, i+len-1)) end
+      i = i + len
+    end
+    return table.concat(result)
+  end
+
+  line = remove_icons_safely(vim.trim(line))
+
+  -- Extract file path before first numeric field, supports formats:
+  -- path:line:col:content or path:line:content
+  local file_path, rest = line:match('^([^:]+):(%d+.*)$')
+  if not file_path or not rest then return nil end
+
+  local line_num, col_num, content = rest:match('^(%d+):(%d+):(.*)$')
+  if not line_num then line_num, content = rest:match('^(%d+):(.*)$') end
+  if not line_num then return nil end
+
+  -- Resolve file path using strategies similar to parse_selection
+  local info = { path = vim.trim(file_path), start_line = tonumber(line_num), end_line = tonumber(line_num) }
+  if info.path == '' then return nil end
+
+  local paths = { info.path }
+  local expanded = vim.fn.expand(info.path)
+  if expanded ~= info.path then table.insert(paths, expanded) end
+  if not vim.startswith(info.path, '/') then
+    local cwd = vim.loop.cwd()
+    table.insert(paths, cwd .. '/' .. info.path)
+    local home = vim.env.HOME or os.getenv('HOME')
+    if home then table.insert(paths, home .. '/' .. info.path) end
+  end
+  local found = vim.fn.findfile(info.path, '.;')
+  if found ~= '' then table.insert(paths, vim.fn.fnamemodify(found, ':p')) end
+
+  for _, p in ipairs(paths) do
+    local st = vim.loop.fs_stat(p)
+    if st then
+      info.path = p
+      return info
+    end
+  end
+
+  return info -- return best-effort even if fs_stat failed (clipboard still useful)
 end
 
 function M.send_grep_results(selections, opts)
