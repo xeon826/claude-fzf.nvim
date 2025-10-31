@@ -566,8 +566,8 @@ function M.send_buffer_selections(selections, opts)
       local success, err = logger.safe_call(
         claudecode.send_at_mention,
         string.format("send_at_mention(%s)", file_path),
-        file_path, 
-        nil, 
+        file_path,
+        nil,
         nil,
         claude_opts.source_tag or "claude-fzf-buffers"
       )
@@ -575,10 +575,13 @@ function M.send_buffer_selections(selections, opts)
       if success then
         success_count = success_count + 1
         logger.debug("[BUFFER_SELECTIONS] Successfully sent: %s", file_path)
+
+        -- Add delay to prevent Claude Code CLI from dropping files in rapid succession
+        vim.wait(100)
       else
         logger.error("[BUFFER_SELECTIONS] Failed to send %s: %s", file_path, err or "unknown error")
         notify.error(
-          string.format('Send failed: %s - %s', 
+          string.format('Send failed: %s - %s',
             file_path, err or "unknown error")
         )
       end
@@ -795,10 +798,10 @@ function M.parse_selection(selection, opts)
   
   file_path = vim.trim(file_path)
   if opts.is_buffer then
-    -- For buffers, remove flags like 'a' (active), '#' (alt), or '%' (current) from the beginning.
+    -- For buffers, remove flags like 'a' (active), '#' (alt), '%' (current), 'h' (hidden), etc.
     -- Also handle Unicode spaces that might surround these flags
-    -- Match any combination of buffer flags (a, #, %) with optional Unicode spaces
-    file_path = file_path:gsub("^[%s ]*[a#%%]+[%s ]*", "")
+    -- Match any combination of buffer flags with optional Unicode spaces
+    file_path = file_path:gsub("^[%s ]*[a#%%h]+[%s ]*", "")
     file_path = vim.trim(file_path)
   end
   
@@ -934,7 +937,7 @@ function M.parse_buffer_selection(selection)
     -- The parse_selection function already handles line number separation, so we return just the path
     return file_info.path
   else
-    logger.warn("[PARSE_BUFFER] M.parse_selection failed to find a valid file_for: '%s'", file_part)
+    logger.warn("[PARSE_BUFFER] M.parse_selection failed to find a valid file for: '%s'", file_part)
     return nil
   end
 end
