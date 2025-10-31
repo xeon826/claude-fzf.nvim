@@ -795,8 +795,9 @@ function M.parse_selection(selection, opts)
   
   file_path = vim.trim(file_path)
   if opts.is_buffer then
-    -- For buffers, remove flags like '#' (alt) or '%' (current) from the beginning.
-    file_path = file_path:gsub("^[#%%]%s*", "")
+    -- For buffers, remove flags like 'a' (active), '#' (alt), or '%' (current) from the beginning.
+    -- Also handle Unicode spaces that might surround these flags
+    file_path = file_path:gsub("^[%s ]*[a#%%][%s ]*", "")
     file_path = vim.trim(file_path)
   end
   
