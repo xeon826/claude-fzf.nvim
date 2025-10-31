@@ -797,7 +797,8 @@ function M.parse_selection(selection, opts)
   if opts.is_buffer then
     -- For buffers, remove flags like 'a' (active), '#' (alt), or '%' (current) from the beginning.
     -- Also handle Unicode spaces that might surround these flags
-    file_path = file_path:gsub("^[%s ]*[a#%%][%s ]*", "")
+    -- Match any combination of buffer flags (a, #, %) with optional Unicode spaces
+    file_path = file_path:gsub("^[%s ]*[a#%%]+[%s ]*", "")
     file_path = vim.trim(file_path)
   end
   
@@ -929,10 +930,11 @@ function M.parse_buffer_selection(selection)
 
   if file_info and file_info.path then
     logger.debug("[PARSE_BUFFER] Successfully parsed with M.parse_selection, result: '%s'", file_info.path)
-    -- The buffer selection doesn't imply a line range, so we just return the path.
+    -- Buffer selections include line numbers, but we only need the file path for Claude
+    -- The parse_selection function already handles line number separation, so we return just the path
     return file_info.path
   else
-    logger.warn("[PARSE_BUFFER] M.parse_selection failed to find a valid file for: '%s'", file_part)
+    logger.warn("[PARSE_BUFFER] M.parse_selection failed to find a valid file_for: '%s'", file_part)
     return nil
   end
 end
