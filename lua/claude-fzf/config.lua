@@ -27,11 +27,11 @@ M.defaults = {
   },
   
   keymaps = {
-    files = "<leader>cf",
-    grep = "<leader>cg", 
-    buffers = "<leader>cb",
-    git_files = "<leader>cgf",
-    directory_files = "<leader>cd",
+    -- files = "<C-f>",
+    -- grep = "<leader>cg", 
+    -- buffers = "<leader>cb",
+    -- git_files = "<leader>cgf",
+    -- directory_files = "<leader>cd",
   },
   
   fzf_opts = {
